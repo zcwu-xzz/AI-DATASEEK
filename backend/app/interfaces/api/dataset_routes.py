@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import FileResponse, Response
 
-from app.application.errors.exceptions import ForbiddenError
+from app.application.errors.exceptions import ForbiddenError, UpstreamServiceError
 from app.application.services.data_center_dataset_service import DataCenterDatasetService
 from app.application.services.dataset_suggested_question_service import DatasetSuggestedQuestionService
 from app.domain.models.user import User, UserRole
+from app.infrastructure.external.sso_client import resolve_sso_uid
 from app.application.services.agent_service import AgentService
 from app.interfaces.dependencies import get_agent_service, get_current_user
 from app.interfaces.schemas.base import APIResponse
@@ -42,17 +43,25 @@ async def list_data_center_datasets(
 
 @router.post("/submissions", response_model=APIResponse[DataCenterDatasetResponse])
 async def create_dataset_submission(
-    request: DatasetSubmissionRequest,
+    submission: DatasetSubmissionRequest,
+    _request: Request,
     current_user: User = Depends(get_current_user),
 ) -> APIResponse[DataCenterDatasetResponse]:
     _require_dataset_demo_admin(current_user)
+    try:
+        sso_uid = await resolve_sso_uid(submission.token)
+    except UpstreamServiceError:
+        # This is an API-to-API contract. Never redirect the caller's POST to
+        # the SSO website because 307 would preserve the POST and cause a 405.
+        return Response(status_code=401)
     dataset = await DataCenterDatasetService().create_submission(
-        external_id=request.external_id,
-        name=request.name,
-        summary=request.summary,
-        keywords=request.keywords,
-        storage_directory=request.storage_directory,
+        external_id=submission.external_id,
+        name=submission.name,
+        summary=submission.summary,
+        keywords=submission.keywords,
+        storage_directory=submission.storage_directory,
         created_by=current_user.id,
+        sso_uid=sso_uid,
     )
     return APIResponse.success(dataset_response(dataset))
 

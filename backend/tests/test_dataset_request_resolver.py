@@ -13,7 +13,8 @@ from app.application.services.dataset_request_resolver import (
     RequestDecision,
 )
 from app.domain.models.dataset import DataCenterDataset, DatasetFile, DatasetLocation, DatasetStorageType
-from app.domain.models.event import DoneEvent, MessageEvent
+from app.domain.models.event import DoneEvent, MessageEvent, ToolEvent, ToolStatus
+from app.domain.models.tool_result import ToolResult
 from app.domain.services.lightweight_task_runner import LightweightTaskRunner
 from app.domain.models.session import Session
 from app.domain.services.agent_domain_service import AgentDomainService
@@ -161,6 +162,59 @@ async def test_resolver_uses_generic_catalog_query_selected_by_model(monkeypatch
     assert ".nc" in resolution.answer
     assert model.calls == 1
     assert resolution.controller_metadata["source"] == "catalog_executor"
+
+
+@pytest.mark.asyncio
+async def test_catalog_lookup_resolves_file_from_prior_archive_manifest(monkeypatch):
+    filename = "QilianMountains_Annual_Average_Vapor_Pressure_(2011-2020).tif"
+    model = _FakeModel([
+        '{"safety":{"decision":"allow","risk_level":"low","categories":[],"reason":"","suggestion":""},'
+        '"execution":{"mode":"catalog","required_evidence":"catalog","required_capabilities":[],"requires_artifacts":false},'
+        f'"answer":"","catalog_queries":[{{"operation":"search_files","query":"{filename}","limit":10}}],'
+        '"reason":"查询此前解压的文件路径"}',
+    ])
+    monkeypatch.setattr(resolver_module, "create_chat_model", lambda *_args, **_kwargs: model)
+    monkeypatch.setattr(resolver_module, "get_settings", lambda: SimpleNamespace(dataset_request_resolver_timeout_seconds=1))
+    archive_payload = {
+        "success": True,
+        "source_archive": "vapor-pressure.rar",
+        "summary": {"archive_count": 1, "file_count": 1, "expanded_bytes": 1024},
+        "files": [{"path": f"vapor-pressure/{filename}", "size": 1024}],
+    }
+    unpack_event = ToolEvent(
+        tool_call_id="unpack-1",
+        tool_name="shell",
+        function_name="dataset_unpack",
+        function_args={"output_dir": "/home/ubuntu/output/unpacked-private"},
+        status=ToolStatus.CALLED,
+        function_result=ToolResult(
+            success=True,
+            data={
+                "status": "completed",
+                "returncode": 0,
+                "output": resolver_module.json.dumps(archive_payload),
+            },
+        ),
+    )
+    dataset = DataCenterDataset(
+        dataset_id="archive-dataset",
+        data_center_id="center-1",
+        data_center_name="Center",
+        name="Archive data",
+        files=[DatasetFile(path="vapor-pressure.rar", size=2048)],
+        metadata={"inventory_complete": True},
+    )
+
+    resolution = await _resolver().resolve(
+        question=f"{filename} 的路径是什么？",
+        datasets=[dataset],
+        events=[unpack_event],
+    )
+
+    assert resolution.mode == "catalog"
+    assert f"`vapor-pressure.rar!/vapor-pressure/{filename}`" in resolution.answer
+    assert "本次会话的解压清单" in resolution.answer
+    assert "/home/ubuntu/output" not in resolution.answer
 
 
 @pytest.mark.asyncio

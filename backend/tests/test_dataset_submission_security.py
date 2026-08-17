@@ -179,6 +179,7 @@ async def _create_submission(
         keywords=["raster", "raster", "science"],
         storage_directory=" /srv/datasets/center-a ",
         created_by=created_by,
+        sso_uid="sso-user-1",
     )
 
 
@@ -223,6 +224,7 @@ def test_submission_schema_uses_one_normalized_storage_directory():
         summary="Summary",
         keywords=[" raster ", "raster", "science"],
         storage_directory=" /srv/datasets/example ",
+        token="sso-token",
     )
 
     assert request.keywords == ["raster", "science"]
@@ -235,6 +237,7 @@ def test_submission_schema_uses_one_normalized_storage_directory():
             summary="Summary",
             keywords=["  "],
             storage_directory="/srv/datasets/example",
+            token="sso-token",
         )
 
 
@@ -268,6 +271,7 @@ async def test_submission_persists_recursive_inventory_and_survives_service_recr
         "inventory_source": "verified_recursive_scan",
         "recursive_file_count": 3,
         "total_size_bytes": inventory.total_size,
+        "sso_uid": "sso-user-1",
     }
     assert len(dataset.locations) == 1
     assert dataset.locations[0].source_path == inventory.canonical_source_directory
@@ -297,6 +301,7 @@ async def test_submission_persists_recursive_inventory_and_survives_service_recr
         "rasters/nested/tile-02.tif",
     ]
     assert inventory.canonical_source_directory not in dataset_response(dataset).model_dump_json()
+    assert "sso-user-1" not in dataset_response(dataset).model_dump_json()
 
     stored = stored_documents[dataset.dataset_id]
     assert stored.owner_id == "owner-a"

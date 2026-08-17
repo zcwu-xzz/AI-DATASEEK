@@ -1,0 +1,69 @@
+import importlib.util
+from pathlib import Path
+
+import numpy as np
+import rasterio
+from rasterio.transform import from_origin
+import xarray as xr
+
+
+ROOT = Path(__file__).resolve().parents[2]
+SPEC = importlib.util.spec_from_file_location(
+    "data_foundation_operations",
+    ROOT / "tools" / "data_foundation" / "operations.py",
+)
+OPERATIONS = importlib.util.module_from_spec(SPEC)
+assert SPEC.loader is not None
+SPEC.loader.exec_module(OPERATIONS)
+
+
+def _raster(path, *, transform=None):
+    with rasterio.open(
+        path,
+        "w",
+        driver="GTiff",
+        width=3,
+        height=2,
+        count=1,
+        dtype="float32",
+        crs="EPSG:4326",
+        transform=transform or from_origin(100, 20, 1, 1),
+        nodata=-9999,
+    ) as target:
+        target.write(np.arange(6, dtype="float32").reshape(2, 3), 1)
+
+
+def test_format_cf_and_grid_diagnostics(tmp_path):
+    path = tmp_path / "climate.nc"
+    xr.Dataset(
+        {"temperature": (("time", "lat", "lon"), np.ones((1, 2, 3), dtype="float32"))},
+        coords={
+            "time": ("time", [0], {"standard_name": "time", "units": "days since 2000-01-01"}),
+            "lat": ("lat", [10.0, 11.0], {"standard_name": "latitude", "units": "degrees_north"}),
+            "lon": ("lon", [100.0, 101.0, 102.0], {"standard_name": "longitude", "units": "degrees_east"}),
+        },
+        attrs={"Conventions": "CF-1.8"},
+    ).to_netcdf(path, engine="h5netcdf")
+
+    inspected = OPERATIONS.format_inspect([str(path)])
+    assert inspected["summary"]["items"][0]["format"] == "netcdf"
+    validated = OPERATIONS.cf_validate(str(path))
+    assert validated["summary"]["coordinate_roles"]["longitude"] == "lon"
+    diagnosed = OPERATIONS.grid_diagnose(str(path))
+    assert diagnosed["summary"]["grid_type"] == "rectilinear"
+    assert diagnosed["answer_ready"] is True
+
+
+def test_raster_compatibility_and_artifact_validation(tmp_path):
+    first, second, shifted = tmp_path / "first.tif", tmp_path / "second.tif", tmp_path / "shifted.tif"
+    _raster(first)
+    _raster(second)
+    _raster(shifted, transform=from_origin(101, 20, 1, 1))
+
+    compatible = OPERATIONS.raster_compatibility([str(first), str(second)], "difference")
+    assert compatible["summary"]["compatible"] is True
+    incompatible = OPERATIONS.raster_compatibility([str(first), str(shifted)], "difference")
+    assert incompatible["summary"]["compatible"] is False
+    assert "transform" in incompatible["summary"]["differences"][0]["fields"]
+    artifact = OPERATIONS.artifact_validate(str(first))
+    assert artifact["summary"]["valid_sample_count"] == 6

@@ -52,6 +52,7 @@ from app.domain.models.audit import AuditRiskLevel, AuditStatus
 from app.domain.models.safety import SafetyReview
 from app.application.services.data_center_dataset_service import DataCenterDatasetService
 from app.application.services.dataset_request_resolver import FrontControllerResolution
+from app.infrastructure.external.sso_client import record_analysis_tool_usage
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +187,8 @@ class AgentTaskRunner(TaskRunner):
         self._artifact_fingerprints: dict[str, ArtifactFingerprint] = {}
         self._dataset_service = DataCenterDatasetService()
         self._mounted_dataset_ids: set[str] = set()
+        self._active_datasets: list[Any] = []
+        self._reported_analysis_tool_usage: set[tuple[str, str, str]] = set()
         # Only files materialized from the data-center catalog are protected from
         # attachment publication.  Generated sidecars (reports, previews, etc.)
         # in the same directory must remain publishable artifacts.
@@ -998,8 +1001,41 @@ class AgentTaskRunner(TaskRunner):
                     pass
                 else:
                     logger.warning(f"Agent {self._agent_id} received unknown tool event: {event.tool_name}")
+            if event.status == ToolStatus.CALLED:
+                await self._report_analysis_tool_usage(event)
         except Exception as e:
             logger.exception(f"Agent {self._agent_id} failed to generate tool content: {e}")
+
+    async def _report_analysis_tool_usage(self, event: ToolEvent) -> None:
+        """Report successful scientific Tool calls for SSO-linked submissions."""
+        function_name = str(event.function_name or "")
+        if not (
+            function_name.startswith("scientific_")
+            or function_name.startswith("geoscience_")
+        ):
+            return
+        result = event.function_result
+        if not isinstance(result, ToolResult) or not result.success:
+            return
+        reports = []
+        for dataset in self._active_datasets:
+            metadata = dataset.metadata if isinstance(dataset.metadata, dict) else {}
+            uid = metadata.get("sso_uid")
+            dataset_id = str(getattr(dataset, "dataset_id", ""))
+            title = str(getattr(dataset, "name", "") or "数据集").strip()
+            if not isinstance(uid, str) or not uid.strip() or not dataset_id:
+                continue
+            key = (event.tool_call_id, dataset_id, function_name)
+            if key in self._reported_analysis_tool_usage:
+                continue
+            self._reported_analysis_tool_usage.add(key)
+            reports.append(record_analysis_tool_usage(
+                uid=uid.strip(),
+                title=title,
+                tool_id=function_name,
+            ))
+        if reports:
+            await asyncio.gather(*reports)
 
     async def run(self, task: Task) -> None:
         """Process agent's message queue and run the agent's flow"""
@@ -1046,6 +1082,7 @@ class AgentTaskRunner(TaskRunner):
                     else []
                 )
                 mounted_dataset_ids.update(item.dataset_id for item in datasets)
+                self._active_datasets = list(datasets)
                 self._remember_mounted_dataset_paths(datasets)
                 # Capture the baseline after catalog files have been materialized;
                 # otherwise the read-only source files look like new artifacts.

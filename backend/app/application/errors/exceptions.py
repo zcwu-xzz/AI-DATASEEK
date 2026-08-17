@@ -39,3 +39,8 @@ class UnauthorizedError(AppException):
 class ForbiddenError(AppException):
     def __init__(self, msg: str = "Access forbidden"):
         super().__init__(code=403, msg=msg, status_code=403)
+
+
+class UpstreamServiceError(AppException):
+    def __init__(self, msg: str = "Upstream service unavailable"):
+        super().__init__(code=502, msg=msg, status_code=502)

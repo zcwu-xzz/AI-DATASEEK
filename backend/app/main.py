@@ -11,6 +11,7 @@ from app.interfaces.dependencies import get_agent_service
 from app.interfaces.api.routes import router
 from app.infrastructure.logging import setup_logging
 from app.interfaces.errors.exception_handlers import register_exception_handlers
+from app.interfaces.middleware.sso_auth import SSOAuthorizationMiddleware
 from app.infrastructure.models.documents import (
     AgentDocument,
     AgentProfileDocument,
@@ -169,6 +170,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SSOAuthorizationMiddleware)
 
 # Register exception handlers
 register_exception_handlers(app)

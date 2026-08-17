@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_runner_discovers_builtin_scientific_tools():
     registry = load_registry(ROOT / "tools")
 
-    assert len(registry) == 37
+    assert len(registry) == 43
     assert "scientific_inspect" in registry
     assert "scientific_region_timeseries" in registry
     assert "geoscience_collection_inspect" in registry

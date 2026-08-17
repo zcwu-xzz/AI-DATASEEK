@@ -215,6 +215,7 @@ class DataCenterDatasetService:
         keywords: Sequence[str],
         storage_directory: str,
         created_by: str,
+        sso_uid: str | None = None,
     ) -> DataCenterDataset:
         normalized_directory = storage_directory.strip()
         if not normalized_directory:
@@ -248,6 +249,15 @@ class DataCenterDatasetService:
             verification_message="Directory inspected on the execution node and mounted read-only",
         )
         now = _utc_now()
+        metadata = {
+            "temporary": True,
+            "inventory_complete": True,
+            "inventory_source": "verified_recursive_scan",
+            "recursive_file_count": len(inventory.files),
+            "total_size_bytes": inventory.total_size,
+        }
+        if sso_uid:
+            metadata["sso_uid"] = sso_uid
         dataset_values = dict(
             external_id=external_id.strip(),
             data_center_id="dataset-chat-demo",
@@ -264,13 +274,7 @@ class DataCenterDatasetService:
                 )
                 for item in inventory.files
             ],
-            metadata={
-                "temporary": True,
-                "inventory_complete": True,
-                "inventory_source": "verified_recursive_scan",
-                "recursive_file_count": len(inventory.files),
-                "total_size_bytes": inventory.total_size,
-            },
+            metadata=metadata,
             locations=[location],
             enabled=True,
             is_submission=True,

@@ -12,8 +12,9 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import get_settings
 from app.domain.models.dataset import DataCenterDataset
-from app.domain.models.event import MessageEvent
+from app.domain.models.event import MessageEvent, ToolEvent
 from app.domain.models.safety import SafetyReview
+from app.domain.models.tool_result import ToolResult
 from app.domain.services.safety.policy import deterministic_review
 from app.domain.services.safety.policy_store import get_safety_policy_store
 from app.domain.services.token_usage_service import TokenUsageService
@@ -114,7 +115,7 @@ class FrontControllerResolution:
 LightweightResolution = FrontControllerResolution
 
 
-FRONT_CONTROLLER_PROMPT_VERSION = "2026-08-11.3"
+FRONT_CONTROLLER_PROMPT_VERSION = "2026-08-14.1"
 MAX_TARGET_FILES = 48
 
 
@@ -158,6 +159,10 @@ Rules:
   that the user did not ask to verify.
 - Use catalog when the answer needs only registered dataset names, descriptions,
   tags, file paths, filenames, extensions, sizes, counts, or format groups.
+- `recent_archive_inventory` contains virtual paths recovered from successful
+  archive-unpack manifests in this conversation. Treat these as verified file
+  inventory evidence. Paths use `archive.ext!/relative/path` notation and must
+  never be replaced with sandbox or host filesystem paths.
 - `search_files` performs a literal filename/path substring lookup. Its query must
   be a filename/path fragment, never a natural-language instruction.
 - Use `list_files` for a bounded page of paths, `sample_files` for a genuinely
@@ -466,6 +471,7 @@ class DatasetRequestResolver:
             selected_mcp_servers=selected_mcp_servers or [],
             attachment_names=attachment_names or [],
         )
+        archive_records = self._archive_inventory_records(events)
         try:
             overrides = dict(llm_overrides or {})
             overrides["temperature"] = 0
@@ -513,6 +519,11 @@ class DatasetRequestResolver:
                     target_files=sandbox_target_files,
                 )
             evidence = self._catalog.execute(datasets, decision.catalog_queries)
+            evidence = self._merge_archive_inventory_evidence(
+                evidence,
+                decision.catalog_queries,
+                archive_records,
+            )
             if any(
                 item.get("operation") in {"filter_files", "aggregate_files"}
                 and item.get("inventory_complete") is not True
@@ -646,11 +657,18 @@ class DatasetRequestResolver:
                 elif match_count == 1:
                     item = matches[0]
                     extension = item.get("extension") or "[无后缀]"
-                    sections.append(
-                        f"登记清单中找到 `{item['logical_path']}`，后缀为 `{extension}`，大小为 {cls._format_catalog_size(item['size_bytes'], language=language)}。"
-                        if language == "zh"
-                        else f"Found `{item['logical_path']}` in the registered inventory; its extension is `{extension}` and its size is {cls._format_catalog_size(item['size_bytes'], language=language)}."
-                    )
+                    if item.get("inventory_source") == "archive_manifest":
+                        sections.append(
+                            f"本次会话的解压清单中找到 `{item['logical_path']}`，后缀为 `{extension}`，大小为 {cls._format_catalog_size(item['size_bytes'], language=language)}。"
+                            if language == "zh"
+                            else f"Found `{item['logical_path']}` in this conversation's archive manifest; its extension is `{extension}` and its size is {cls._format_catalog_size(item['size_bytes'], language=language)}."
+                        )
+                    else:
+                        sections.append(
+                            f"登记清单中找到 `{item['logical_path']}`，后缀为 `{extension}`，大小为 {cls._format_catalog_size(item['size_bytes'], language=language)}。"
+                            if language == "zh"
+                            else f"Found `{item['logical_path']}` in the registered inventory; its extension is `{extension}` and its size is {cls._format_catalog_size(item['size_bytes'], language=language)}."
+                        )
                 else:
                     heading = f"登记清单中找到 {match_count} 个匹配文件：" if language == "zh" else f"Found {match_count} matching files:"
                     lines = [heading, *file_lines(matches)]
@@ -881,6 +899,7 @@ class DatasetRequestResolver:
             for event in events
             if isinstance(event, MessageEvent)
         ][-6:]
+        archive_records = DatasetRequestResolver._archive_inventory_records(events)
         return {
             "question": question,
             "recent_conversation": recent,
@@ -913,4 +932,105 @@ class DatasetRequestResolver:
             "available_skills": selected_skills,
             "available_mcp_servers": selected_mcp_servers,
             "attachment_names": attachment_names,
+            "recent_archive_inventory": {
+                "file_count": len(archive_records),
+                "virtual_path_sample": [
+                    record["logical_path"] for record in archive_records[:50]
+                ],
+                "path_notation": "archive.ext!/relative/path",
+            },
         }
+
+    @staticmethod
+    def _archive_inventory_records(events: list[Any]) -> list[dict[str, Any]]:
+        """Recover safe virtual paths from successful prior unpack manifests."""
+        records_by_path: dict[str, dict[str, Any]] = {}
+        for event in events:
+            if not isinstance(event, ToolEvent) or event.function_name != "dataset_unpack":
+                continue
+            function_result = event.function_result
+            if isinstance(function_result, ToolResult):
+                data = function_result.data if isinstance(function_result.data, dict) else {}
+                succeeded = function_result.success is True
+            elif isinstance(function_result, dict):
+                nested = function_result.get("data")
+                data = nested if isinstance(nested, dict) else function_result
+                succeeded = function_result.get("success") is not False
+            else:
+                continue
+            if not succeeded or data.get("status") != "completed" or data.get("returncode") != 0:
+                continue
+            raw_output = data.get("output")
+            if not isinstance(raw_output, str):
+                continue
+            try:
+                payload = json.loads(raw_output)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+            if not isinstance(payload, dict) or payload.get("success") is not True:
+                continue
+            source_value = str(payload.get("source_archive") or "archive")
+            source_name = PurePosixPath(source_value.replace("\\", "/")).name
+            if (
+                not source_name
+                or source_name in {".", ".."}
+                or any(ord(character) < 32 or ord(character) == 127 for character in source_name)
+            ):
+                continue
+            for item in (payload.get("files") or [])[:2000]:
+                if not isinstance(item, dict):
+                    continue
+                relative = DatasetCatalogQueryService._logical_path(str(item.get("path") or ""))
+                if not relative:
+                    continue
+                filename = PurePosixPath(relative).name
+                suffix = PurePosixPath(filename).suffix.casefold()
+                virtual_path = f"{source_name}!/{relative}"
+                try:
+                    size_bytes = max(0, int(item.get("size") or 0))
+                except (TypeError, ValueError):
+                    size_bytes = 0
+                records_by_path[virtual_path.casefold()] = {
+                    "dataset": source_name,
+                    "logical_path": virtual_path,
+                    "filename": filename,
+                    "extension": suffix,
+                    "size_bytes": size_bytes,
+                    "content_type": "",
+                    "inventory_source": "archive_manifest",
+                }
+        return list(records_by_path.values())
+
+    @staticmethod
+    def _merge_archive_inventory_evidence(
+        evidence: list[dict[str, Any]],
+        queries: list[CatalogQuery],
+        archive_records: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        if not archive_records:
+            return evidence
+        for result, query in zip(evidence, queries):
+            if query.operation != "search_files":
+                continue
+            needle = query.query.casefold().strip()
+            derived = [
+                record
+                for record in archive_records
+                if not needle or needle in record["logical_path"].casefold()
+            ]
+            existing = [
+                item for item in (result.get("matches") or []) if isinstance(item, dict)
+            ]
+            combined: list[dict[str, Any]] = []
+            seen: set[str] = set()
+            for item in [*existing, *derived]:
+                key = str(item.get("logical_path") or "").casefold()
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                combined.append(item)
+            result["match_count"] = len(combined)
+            result["matches"] = combined[: query.limit]
+            result["matches_omitted"] = max(0, len(combined) - query.limit)
+            result["archive_manifest_match_count"] = len(derived)
+        return evidence

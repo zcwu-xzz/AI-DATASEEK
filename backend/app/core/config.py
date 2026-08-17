@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     # daemon's mount namespace (Snap Docker uses /var/lib/snapd/hostfs).
     dataset_docker_host_root: str = ""
 
+    # Data-center SSO and analysis-tool usage reporting.
+    sso_uid_url: str = "https://space.4fair.cn/oidc-server/sso/uid"
+    analysis_tool_usage_url: str = "https://space.4fair.cn/tds-trading/order/order.addAnalysisToolCount"
+    analysis_tool_source: str = "数据中心"
+    external_integration_timeout_seconds: float = 10.0
+
     # Redis configuration
     redis_host: str = "redis"
     redis_port: int = 6379

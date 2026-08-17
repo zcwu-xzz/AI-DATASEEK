@@ -1,0 +1,49 @@
+{
+  "plugin": "data_foundation",
+  "version": "1.0.0",
+  "handler": "handler.py",
+  "tools": [
+    {
+      "name": "data_format_inspect",
+      "description": "Identify scientific and geospatial containers, including NetCDF, HDF5, GRIB, Zarr, raster and vector formats, and report embedded groups, subdatasets or layers without analyzing values.",
+      "scopes": ["dataset_fast_path"],
+      "timeout_seconds": 60,
+      "parameters": {"type":"object","properties":{"input_paths":{"type":"array","items":{"type":"string"},"minItems":1}},"required":["input_paths"],"additionalProperties":false}
+    },
+    {
+      "name": "cf_semantics_validate",
+      "description": "Validate coordinate, time calendar, missing-value, scale/offset, units, bounds and grid-mapping semantics in one NetCDF-compatible dataset before analysis.",
+      "scopes": ["dataset_fast_path"],
+      "timeout_seconds": 60,
+      "parameters": {"type":"object","properties":{"input_path":{"type":"string"}},"required":["input_path"],"additionalProperties":false}
+    },
+    {
+      "name": "spatial_grid_diagnose",
+      "description": "Diagnose rectilinear, curvilinear or projected spatial grids, axis ordering, longitude domain, antimeridian crossing, resolution and coordinate monotonicity.",
+      "scopes": ["dataset_fast_path"],
+      "timeout_seconds": 60,
+      "parameters": {"type":"object","properties":{"input_path":{"type":"string"}},"required":["input_path"],"additionalProperties":false}
+    },
+    {
+      "name": "raster_compatibility_validate",
+      "description": "Validate CRS, transform, dimensions, resolution, band count and nodata compatibility for multiple rasters before stacking, mosaicking, differencing or overlay.",
+      "scopes": ["dataset_fast_path"],
+      "timeout_seconds": 60,
+      "parameters": {"type":"object","properties":{"input_paths":{"type":"array","items":{"type":"string"},"minItems":2},"operation":{"type":"string","enum":["stack","mosaic","difference","overlay"]}},"required":["input_paths","operation"],"additionalProperties":false}
+    },
+    {
+      "name": "eo_product_resolve",
+      "description": "Resolve an Earth-observation product family from embedded metadata and filenames, then return deterministic band, scale and quality-mask semantics when known.",
+      "scopes": ["dataset_fast_path"],
+      "timeout_seconds": 60,
+      "parameters": {"type":"object","properties":{"input_path":{"type":"string"}},"required":["input_path"],"additionalProperties":false}
+    },
+    {
+      "name": "artifact_scientific_validate",
+      "description": "Validate a generated NetCDF, GeoTIFF, vector or PNG artifact for readability, non-empty content and essential scientific metadata, returning explicit warnings.",
+      "scopes": ["dataset_fast_path"],
+      "timeout_seconds": 60,
+      "parameters": {"type":"object","properties":{"input_path":{"type":"string"}},"required":["input_path"],"additionalProperties":false}
+    }
+  ]
+}

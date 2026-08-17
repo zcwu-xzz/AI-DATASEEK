@@ -19,6 +19,33 @@ export const BASE_URL = API_CONFIG.host
   ? `${API_CONFIG.host}/api/${API_CONFIG.version}` 
   : `/api/${API_CONFIG.version}`;
 
+const SSO_ENTRY_URL = 'https://space.4fair.cn';
+const SSO_TOKEN_KEY = 'dataseek_sso_token';
+
+function readSSOToken(): string | null {
+  const url = new URL(window.location.href);
+  const queryToken = url.searchParams.get('token')?.trim();
+  if (queryToken) {
+    sessionStorage.setItem(SSO_TOKEN_KEY, queryToken);
+    url.searchParams.delete('token');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    return queryToken;
+  }
+  return sessionStorage.getItem(SSO_TOKEN_KEY)?.trim() || null;
+}
+
+function requireSSOToken(): string {
+  const token = readSSOToken();
+  if (token) return token;
+  window.location.replace(SSO_ENTRY_URL);
+  throw new Error('SSO authorization is required');
+}
+
+function redirectToSSO(): void {
+  sessionStorage.removeItem(SSO_TOKEN_KEY);
+  window.location.replace(SSO_ENTRY_URL);
+}
+
 // Unified response format
 export interface ApiResponse<T> {
   code: number;
@@ -35,10 +62,9 @@ export const apiClient = axios.create({
   },
 });
 
-// Platform APIs are deliberately unauthenticated. Remove legacy credentials
-// even if another module or an old browser session configured Axios defaults.
 apiClient.interceptors.request.use((config) => {
-  config.headers.delete('Authorization');
+  config.headers.set('Authorization', requireSSOToken());
+  config.headers.set('X-DataSeek-Browser-Request', '1');
   config.headers.delete('X-API-Key');
   return config;
 });
@@ -61,6 +87,9 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    if (error.response?.status === 307 || error.response?.status === 401) {
+      redirectToSSO();
+    }
     const apiError = normalizeApiError(error);
 
     console.error('API Error:', apiError);
@@ -111,10 +140,10 @@ export const createSSEConnection = async <T = any>(
   
   const requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-DataSeek-Browser-Request': '1',
     ...headers,
   };
-  delete requestHeaders.Authorization;
-  delete requestHeaders.authorization;
+  requestHeaders.Authorization = requireSSOToken();
   delete requestHeaders['X-API-Key'];
   delete requestHeaders['x-api-key'];
   
@@ -133,6 +162,10 @@ export const createSSEConnection = async <T = any>(
         body: body ? JSON.stringify(body) : undefined,
         signal: abortController.signal,
         async onopen(response) {
+          if (response.status === 401 || response.status === 307) {
+            redirectToSSO();
+            throw new Error('SSO authorization is required');
+          }
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }

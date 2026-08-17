@@ -2,9 +2,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 from pydantic import ValidationError
+from starlette.requests import Request
 
 import app.interfaces.api.dataset_routes as dataset_routes
 from app.application.errors.exceptions import ForbiddenError, NotFoundError
+from app.application.errors.exceptions import UpstreamServiceError
 from app.domain.models.dataset import DataCenterDataset
 from app.domain.models.user import User, UserRole
 from app.interfaces.schemas.dataset import DatasetSubmissionRequest
@@ -58,7 +60,17 @@ def _submission_request() -> DatasetSubmissionRequest:
         summary="Temporary analysis request",
         keywords=["science"],
         storage_directory="/srv/datasets/example",
+        token="sso-token",
     )
+
+
+def _http_request() -> Request:
+    return Request({
+        "type": "http",
+        "method": "POST",
+        "path": "/api/v1/datasets/submissions",
+        "headers": [],
+    })
 
 
 @pytest.mark.asyncio
@@ -68,8 +80,14 @@ async def test_submission_route_allows_admin_and_passes_one_directory(monkeypatc
     dataset_service.create_submission.return_value = dataset
     monkeypatch.setattr(dataset_routes, "DataCenterDatasetService", lambda: dataset_service)
 
+    async def resolve(token: str) -> str:
+        assert token == "sso-token"
+        return "sso-user-1"
+
+    monkeypatch.setattr(dataset_routes, "resolve_sso_uid", resolve)
     response = await dataset_routes.create_dataset_submission(
         _submission_request(),
+        _http_request(),
         current_user=_user(),
     )
 
@@ -80,6 +98,7 @@ async def test_submission_route_allows_admin_and_passes_one_directory(monkeypatc
         keywords=["science"],
         storage_directory="/srv/datasets/example",
         created_by="owner-a",
+        sso_uid="sso-user-1",
     )
     assert response.data is not None
     assert response.data.dataset_id == dataset.dataset_id
@@ -89,13 +108,32 @@ async def test_submission_route_allows_admin_and_passes_one_directory(monkeypatc
 async def test_submission_route_rejects_non_admin_before_directory_inspection(monkeypatch):
     dataset_service = AsyncMock()
     monkeypatch.setattr(dataset_routes, "DataCenterDatasetService", lambda: dataset_service)
-
     with pytest.raises(ForbiddenError):
         await dataset_routes.create_dataset_submission(
             _submission_request(),
+            _http_request(),
             current_user=_user(UserRole.USER),
         )
 
+    dataset_service.create_submission.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_submission_route_returns_401_when_body_token_is_rejected(monkeypatch):
+    dataset_service = AsyncMock()
+    monkeypatch.setattr(dataset_routes, "DataCenterDatasetService", lambda: dataset_service)
+
+    async def reject(_token: str) -> str:
+        raise UpstreamServiceError("invalid token")
+
+    monkeypatch.setattr(dataset_routes, "resolve_sso_uid", reject)
+    response = await dataset_routes.create_dataset_submission(
+        _submission_request(),
+        _http_request(),
+        current_user=_user(),
+    )
+
+    assert response.status_code == 401
     dataset_service.create_submission.assert_not_awaited()
 
 

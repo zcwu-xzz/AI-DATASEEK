@@ -27,11 +27,17 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     )
 
     names = _tool_names(toolkit)
-    assert len(names) == 37
+    assert len(names) == 43
     assert "scientific_inspect" in names
     assert "scientific_netcdf_visualize" in names
     assert "geoscience_collection_inspect" in names
     assert "geoscience_zonal_statistics" in names
+    assert "data_format_inspect" in names
+    assert "cf_semantics_validate" in names
+    assert "spatial_grid_diagnose" in names
+    assert "raster_compatibility_validate" in names
+    assert "eo_product_resolve" in names
+    assert "artifact_scientific_validate" in names
     assert names == toolkit.dataset_fast_path_tool_names
     inspect = next(
         item for item in toolkit.get_tools()

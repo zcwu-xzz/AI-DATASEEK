@@ -28,6 +28,7 @@ _FILE_URI = re.compile(r"(?i)(?<![A-Za-z0-9_])file:(?://)?[\\/]")
 # Omitting them even when their current value looks harmless protects future
 # records whose value may be a path component, allowlist, socket, or bind root.
 _SENSITIVE_METADATA_KEYS = {
+    "sso_uid",
     "absolute_path",
     "allowed_root",
     "allowed_roots",
@@ -220,8 +221,9 @@ class DatasetSubmissionRequest(BaseModel):
     summary: str = Field(min_length=1, max_length=4000)
     keywords: List[str] = Field(min_length=1, max_length=100)
     storage_directory: str = Field(min_length=1, max_length=4096)
+    token: str = Field(min_length=1, max_length=4096)
 
-    @field_validator("external_id", "name", "summary")
+    @field_validator("external_id", "name", "summary", "token")
     @classmethod
     def normalize_required_text(cls, value: str) -> str:
         normalized = value.strip()
