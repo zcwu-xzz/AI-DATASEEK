@@ -116,9 +116,9 @@
                   v-if="node.kind === 'file'"
                   type="button"
                   class="pointer-events-none -my-1.5 flex size-7 shrink-0 items-center justify-center rounded-md text-[var(--icon-secondary)] opacity-0 transition-[color,background-color,opacity] hover:bg-[var(--fill-tsp-white-dark)] hover:text-[var(--icon-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2b7659]/40 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-sm:pointer-events-auto max-sm:opacity-100"
-                  :title="copiedDatasetFilePath === node.path ? `已复制 ${node.name}` : `复制文件名 ${node.name}`"
-                  :aria-label="copiedDatasetFilePath === node.path ? `已复制 ${node.name}` : `复制文件名 ${node.name}`"
-                  @click.stop="copyDatasetFileName(node.name, node.path)"
+                  :title="copiedDatasetFilePath === node.path ? `已复制 ${node.path}` : `复制文件路径 ${node.path}`"
+                  :aria-label="copiedDatasetFilePath === node.path ? `已复制 ${node.path}` : `复制文件路径 ${node.path}`"
+                  @click.stop="copyDatasetFilePath(node.path)"
                 >
                   <Check v-if="copiedDatasetFilePath === node.path" class="size-3.5 text-[#2b7659]" />
                   <Copy v-else class="size-3.5" />
@@ -286,6 +286,7 @@
                   :show-assistant-actions="!isLoading && isLatestAssistantMessage(messages, index)"
                   :task-summary-expanded="isTaskSummaryExpanded(message)"
                   @toolClick="handleToolClick"
+                  @jupyterOpened="handleJupyterOpened"
                   @taskSummaryToggle="toggleTaskSummary(message)"
                 />
               </div>
@@ -625,10 +626,10 @@ function toggleDirectory(path: string) {
   expandedDirectoryPaths.value = updated;
 }
 
-async function copyDatasetFileName(name: string, path: string) {
-  const copied = await copyToClipboard(name);
+async function copyDatasetFilePath(path: string) {
+  const copied = await copyToClipboard(path);
   if (!copied) {
-    showErrorToast('复制文件名失败，请检查浏览器剪贴板权限');
+    showErrorToast('复制文件路径失败，请检查浏览器剪贴板权限');
     return;
   }
 
@@ -638,7 +639,7 @@ async function copyDatasetFileName(name: string, path: string) {
     copiedDatasetFilePath.value = null;
     datasetFileCopyTimer = null;
   }, 1500);
-  showSuccessToast('文件名已复制');
+  showSuccessToast('文件路径已复制');
 }
 
 function toggleCatalogPanel() {
@@ -672,6 +673,11 @@ function handleToolClick(tool: ToolContent) {
   if (!sessionId.value) return;
   toolPanelRealTime.value = false;
   toolPanel.value?.showToolPanel(tool, false);
+}
+
+function handleJupyterOpened(tool: ToolContent) {
+  toolPanelRealTime.value = true;
+  toolPanel.value?.showToolPanel(tool, true);
 }
 
 function jumpToLatestTool() {

@@ -127,6 +127,16 @@ class Settings(BaseSettings):
     # existing installations that manage it through the admin API retain their
     # current value; deployments can opt into an explicit host budget.
     sandbox_max_concurrent: int | None = None
+    # Jupyter is intentionally independent from Agent sandboxes. Every task
+    # receives a private container, kernel token and writable Docker volume.
+    jupyter_image: str = "ai-dataseek-jupyter:latest"
+    jupyter_memory_limit: str = "2g"
+    jupyter_nano_cpus: int = 2_000_000_000
+    jupyter_pids_limit: int = 256
+    # The container is reachable only on the private Docker network by the
+    # task's Sandbox browser. It has no published host port.
+    jupyter_network_disabled: bool = False
+    jupyter_ttl_minutes: int = 60
     # A short bounded queue absorbs normal bursts instead of surfacing a raw
     # scheduler capacity error to the user.
     sandbox_capacity_wait_seconds: float = 60.0

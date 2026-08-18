@@ -113,7 +113,8 @@
             :hideHeader="isConsecutiveAssistant(messages, index)"
             :session-id="sessionId"
             :show-assistant-actions="!isLoading && isLatestAssistantMessage(messages, index)"
-            @toolClick="handleToolClick" />
+            @toolClick="handleToolClick"
+            @jupyterOpened="handleJupyterOpened" />
 
           <div v-if="completionAdvice" class="rounded-xl border border-[var(--border-main)] bg-[var(--background-white-main)] p-4">
             <div class="mb-2 text-sm font-medium text-[var(--text-primary)]">推荐追问</div>
@@ -715,6 +716,11 @@ const handleToolClick = (tool: ToolContent) => {
   if (sessionId.value) {
     toolPanel.value?.showToolPanel(tool, false);
   }
+}
+
+const handleJupyterOpened = (tool: ToolContent) => {
+  realTime.value = true;
+  toolPanel.value?.showToolPanel(tool, true);
 }
 
 const jumpToRealTime = () => {

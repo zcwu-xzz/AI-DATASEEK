@@ -7,7 +7,7 @@ import asyncio
 from app.core.config import get_settings
 from app.infrastructure.storage.mongodb import get_mongodb
 from app.infrastructure.storage.redis import get_redis
-from app.interfaces.dependencies import get_agent_service
+from app.interfaces.dependencies import get_agent_service, get_jupyter_service
 from app.interfaces.api.routes import router
 from app.infrastructure.logging import setup_logging
 from app.interfaces.errors.exception_handlers import register_exception_handlers
@@ -36,6 +36,7 @@ from app.infrastructure.models.documents import (
     StoredFileDocument,
     TemporaryDatasetDocument,
     TaskFeedbackDocument,
+    JupyterSessionDocument,
     TokenUsageDocument,
     UserDocument,
     WorkspaceDocument,
@@ -57,12 +58,26 @@ logger = logging.getLogger(__name__)
 # Load configuration
 settings = get_settings()
 execution_node_monitor: ExecutionNodeMonitor | None = None
+jupyter_reaper_task: asyncio.Task | None = None
+
+
+async def _reap_idle_jupyter_sessions() -> None:
+    while True:
+        try:
+            await asyncio.sleep(60)
+            removed = await get_jupyter_service().reap_idle()
+            if removed:
+                logger.info("Removed %s idle Jupyter sessions", removed)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Failed to reap idle Jupyter sessions")
 
 
 # Create lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global execution_node_monitor
+    global execution_node_monitor, jupyter_reaper_task
     # Code executed on startup
     logger.info("Application startup - AI-DataSeek initializing")
 
@@ -100,10 +115,12 @@ async def lifespan(app: FastAPI):
             DataCenterDatasetDocument,
             TemporaryDatasetDocument,
             TaskFeedbackDocument,
+            JupyterSessionDocument,
         ]
     )
     await ensure_safety_rule_seeds()
     logger.info("Successfully initialized Beanie")
+    jupyter_reaper_task = asyncio.create_task(_reap_idle_jupyter_sessions())
 
     local_node = await ensure_local_default_node()
 
@@ -136,6 +153,11 @@ async def lifespan(app: FastAPI):
     finally:
         # Code executed on shutdown
         logger.info("Application shutdown - AI-DataSeek terminating")
+
+        if jupyter_reaper_task:
+            jupyter_reaper_task.cancel()
+            await asyncio.gather(jupyter_reaper_task, return_exceptions=True)
+            jupyter_reaper_task = None
 
         pool = get_sandbox_pool()
         if pool:

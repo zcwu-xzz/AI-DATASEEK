@@ -51,6 +51,7 @@
     <template v-else>
       <div
         class="max-w-none p-0 m-0 prose prose-sm sm:prose-base dark:prose-invert [&_pre:not(.shiki)]:!bg-[var(--fill-tsp-white-light)] [&_pre:not(.shiki)]:text-[var(--text-primary)] text-base text-[var(--text-primary)]"
+        @click="handleMarkdownClick"
         v-html="renderMarkdown(visibleAssistantContent)"></div>
       <div v-if="showAssistantActions" class="flex h-8 items-center gap-1">
         <button
@@ -168,7 +169,7 @@ import TaskExecutionSummary from './TaskExecutionSummary.vue';
 import { copyToClipboard } from '../utils/dom';
 import { stripHiddenDatasetResultNotices } from '../utils/datasetResultPresentation';
 import { showErrorToast, showSuccessToast } from '../utils/toast';
-import { deleteTaskFeedback, getTaskFeedback, saveTaskFeedback, shareSession, type TaskFeedbackPreference } from '../api/agent';
+import { deleteTaskFeedback, getTaskFeedback, openJupyterNotebook, saveTaskFeedback, shareSession, type TaskFeedbackPreference } from '../api/agent';
 
 
 const props = defineProps<{
@@ -187,6 +188,7 @@ const hideAssistantHeader = computed(() => props.hideHeader ?? false);
 const emit = defineEmits<{
   (e: 'toolClick', tool: ToolContent): void;
   (e: 'taskSummaryToggle'): void;
+  (e: 'jupyterOpened', tool: ToolContent): void;
 }>();
 
 const handleToolClick = (tool: ToolContent) => {
@@ -446,6 +448,75 @@ renderer.link = ({ href, title, text }: { href: string; title?: string | null; t
   const titleAttr = title ? ` title="${title}"` : '';
   return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr}>${text}</a>`;
 };
+renderer.code = ({ text, lang }: { text: string; lang?: string | null }) => {
+  const language = lang ? escapeHtml(lang) : '';
+  const languageClass = language ? ` class="language-${language}"` : '';
+  const jupyterButton = /^(?:python|py|python3)?$/i.test(lang || '')
+    ? '<button type="button" class="markdown-code-jupyter" data-open-jupyter="true" aria-label="在 Jupyter 中打开" title="在 Jupyter 中打开">Jupyter</button>'
+    : '';
+  return `<div class="markdown-code-block"><div class="markdown-code-toolbar"><span>${language || '代码'}</span><div class="markdown-code-actions">${jupyterButton}<button type="button" class="markdown-code-copy" data-copy-code="true" aria-label="复制代码" title="复制代码">复制</button></div></div><pre><code${languageClass}>${escapeHtml(text)}</code></pre></div>`;
+};
+
+const escapeHtml = (value: string) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const copiedCode = ref(false);
+let copiedCodeTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function handleMarkdownClick(event: MouseEvent) {
+  const target = event.target as HTMLElement | null;
+  const button = target?.closest<HTMLButtonElement>('[data-copy-code="true"]');
+  const jupyterButton = target?.closest<HTMLButtonElement>('[data-open-jupyter="true"]');
+  if (jupyterButton) {
+    if (!props.sessionId) {
+      showErrorToast('当前任务尚未建立会话，暂时无法打开 Jupyter');
+      return;
+    }
+    const code = jupyterButton.closest('.markdown-code-block')?.querySelector('code')?.textContent || '';
+    jupyterButton.disabled = true;
+    jupyterButton.textContent = '打开中...';
+    try {
+      await openJupyterNotebook(props.sessionId, code, 'python');
+      const tool: ToolContent = {
+        tool_call_id: `jupyter-${Date.now()}`,
+        name: 'browser_navigate',
+        function: 'JupyterLab',
+        args: { url: 'JupyterLab' },
+        content: { screenshot: null },
+        status: 'called',
+        timestamp: Math.floor(Date.now() / 1000),
+      };
+      emit('jupyterOpened', tool);
+      jupyterButton.textContent = '已打开';
+    } catch (error) {
+      console.error('Failed to open Jupyter notebook', error);
+      jupyterButton.disabled = false;
+      jupyterButton.textContent = 'Jupyter';
+      showErrorToast('Jupyter 打开失败，请稍后重试');
+    }
+    return;
+  }
+  if (!button) return;
+  const code = button.closest('.markdown-code-block')?.querySelector('code')?.textContent || '';
+  const copied = await copyToClipboard(code);
+  if (!copied) {
+    showErrorToast('复制代码失败，请检查浏览器剪贴板权限');
+    return;
+  }
+  copiedCode.value = true;
+  button.textContent = '已复制';
+  if (copiedCodeTimer) clearTimeout(copiedCodeTimer);
+  copiedCodeTimer = setTimeout(() => {
+    copiedCode.value = false;
+    button.textContent = '复制';
+    copiedCodeTimer = null;
+  }, 1500);
+  showSuccessToast('代码已复制');
+}
 
 const renderMarkdown = (text: string) => {
   if (typeof text !== 'string') return '';
@@ -455,6 +526,61 @@ const renderMarkdown = (text: string) => {
 </script>
 
 <style>
+.markdown-code-block {
+  position: relative;
+  overflow: hidden;
+  margin: 1em 0;
+  border: 1px solid var(--border-main);
+  border-radius: 8px;
+  background: var(--fill-tsp-white-light);
+}
+
+.markdown-code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border-main);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.markdown-code-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.markdown-code-copy,
+.markdown-code-jupyter {
+  padding: 3px 7px;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.markdown-code-copy:hover,
+.markdown-code-jupyter:hover {
+  background: var(--fill-tsp-white-dark);
+  color: var(--text-primary);
+}
+
+.markdown-code-copy:disabled,
+.markdown-code-jupyter:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.markdown-code-block pre {
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
 .duration-300 {
   animation-duration: .3s;
 }

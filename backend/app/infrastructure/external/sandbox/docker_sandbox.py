@@ -7,6 +7,7 @@ import logging
 import asyncio
 import io
 import re
+from urllib.parse import quote
 from pathlib import Path, PurePosixPath
 from datetime import datetime, UTC
 from async_lru import alru_cache
@@ -333,6 +334,23 @@ class DockerSandbox(Sandbox):
                 "websockify",
             },
         )
+
+    async def open_browser_url(self, url: str) -> None:
+        """Open a persistent Chrome tab through CDP without retaining a client session."""
+        await self.ensure_vnc_ready()
+        response = await self.client.put(f"{self.cdp_url}/json/new?{quote(url, safe='')}")
+        response.raise_for_status()
+        # Chrome can create the target in the background while leaving the
+        # initial blank tab active. Activate the newly-created target so the
+        # VNC desktop immediately renders the page we just opened.
+        try:
+            target = response.json()
+            target_id = target.get("id") if isinstance(target, dict) else None
+        except ValueError:
+            target_id = None
+        if target_id:
+            activate = await self.client.get(f"{self.cdp_url}/json/activate/{quote(target_id, safe='')}")
+            activate.raise_for_status()
 
     async def _ensure_supervisor_profile(self, profile: str) -> None:
         """Start a fixed service profile, with rolling-upgrade compatibility."""

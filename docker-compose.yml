@@ -36,6 +36,7 @@ services:
       SANDBOX_IMAGE: ${SANDBOX_IMAGE:-ai-dataseek-sandbox:${IMAGE_TAG:-latest}}
       SANDBOX_NAME_PREFIX: ai-dataseek-sandbox
       SANDBOX_NETWORK: ai-dataseek-network
+      JUPYTER_IMAGE: ${JUPYTER_IMAGE:-ai-dataseek-jupyter:${IMAGE_TAG:-latest}}
       DATASET_STORAGE_ROOT: /data/datasets
       DATASET_MANAGED_VOLUME: ai-dataseek-dataset-data
       SKILLS_DIR: /app/skills
@@ -46,6 +47,8 @@ services:
       - skills-data:/data/skills
     depends_on:
       sandbox-image:
+        condition: service_completed_successfully
+      jupyter-image:
         condition: service_completed_successfully
       mongodb:
         condition: service_started
@@ -65,6 +68,18 @@ services:
       context: .
       dockerfile: sandbox/Dockerfile
     command: ["/bin/true"]
+    restart: "no"
+    networks:
+      - ai-dataseek-network
+
+  # One-shot image build. The backend creates one private JupyterLab container
+  # per task, so this service itself never exposes a notebook port.
+  jupyter-image:
+    image: ${JUPYTER_IMAGE:-ai-dataseek-jupyter:${IMAGE_TAG:-latest}}
+    build:
+      context: ./jupyter
+      dockerfile: Dockerfile
+    entrypoint: ["/bin/true"]
     restart: "no"
     networks:
       - ai-dataseek-network

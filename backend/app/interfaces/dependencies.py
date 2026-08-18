@@ -22,6 +22,7 @@ from app.infrastructure.repositories.user_repository import MongoUserRepository
 from app.application.services.api_key_service import APIKeyService
 from app.infrastructure.repositories.api_key_repository import MongoAPIKeyRepository
 from app.application.services.agent_profile_service import AgentProfileService
+from app.application.services.jupyter_service import JupyterService
 from app.infrastructure.repositories.agent_profile_repository import MongoAgentProfileRepository
 
 
@@ -131,6 +132,11 @@ def get_agent_profile_service() -> AgentProfileService:
     """Get agent profile service instance"""
     logger.info("Creating AgentProfileService instance")
     return AgentProfileService(repository=MongoAgentProfileRepository())
+
+
+@lru_cache()
+def get_jupyter_service() -> JupyterService:
+    return JupyterService()
 
 
 def _system_user() -> User:

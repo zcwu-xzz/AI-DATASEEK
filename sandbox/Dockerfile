@@ -43,6 +43,7 @@ RUN apt-get update && apt-get install -y \
     netcdf-bin \
     hdf5-tools \
     proj-bin \
+    libreoffice-writer \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -149,6 +150,13 @@ RUN UV_INDEX_URL=https://pypi.org/simple/ \
 # Tool plugins change frequently and must not invalidate the scientific dependency layer.
 COPY sandbox/scripts/geoscience_ops.py /usr/local/lib/ai-dataseek/
 COPY tools /opt/ai-dataseek/tools
+
+# Tool-specific dependencies stay with their plugins so adding a plugin does
+# not invalidate and reinstall the full scientific runtime.
+RUN uv pip install --no-cache \
+    --index-url https://mirrors.aliyun.com/pypi/simple/ \
+    -r /opt/ai-dataseek/tools/documents/requirements.txt \
+    -r /opt/ai-dataseek/tools/tabular/requirements.txt
 
 # Give agents one deterministic command for nested dataset archives instead of
 # spending model turns discovering and chaining format-specific extractors.

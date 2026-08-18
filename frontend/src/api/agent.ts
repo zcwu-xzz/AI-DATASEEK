@@ -56,6 +56,18 @@ export async function stopSession(sessionId: string): Promise<void> {
   await apiClient.post<ApiResponse<void>>(`/sessions/${sessionId}/stop`);
 }
 
+export async function openJupyterNotebook(
+  sessionId: string,
+  code: string,
+  language = 'python',
+): Promise<{ notebook_path: string }> {
+  const response = await apiClient.post<ApiResponse<{ notebook_path: string }>>(
+    `/sessions/${encodeURIComponent(sessionId)}/jupyter`,
+    { code, language },
+  );
+  return response.data.data;
+}
+
 /**
  * Create VNC signed URL
  * @param sessionId Session ID to create signed URL for

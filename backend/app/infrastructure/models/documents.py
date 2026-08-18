@@ -584,6 +584,24 @@ class TaskFeedbackDocument(Document):
         ]
 
 
+class JupyterSessionDocument(Document):
+    """Private JupyterLab runtime metadata. Tokens are never returned to clients."""
+    session_id: str
+    user_id: str
+    container_name: str
+    token: str
+    work_volume: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_used_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    class Settings:
+        name = "jupyter_sessions"
+        indexes = [
+            IndexModel([("session_id", ASCENDING), ("user_id", ASCENDING)], unique=True),
+            IndexModel([("last_used_at", ASCENDING)]),
+        ]
+
+
 class MCPConfigDocument(Document):
     """MongoDB document storing the global MCP server configuration"""
     config_id: str = "global"

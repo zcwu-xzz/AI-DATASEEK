@@ -214,6 +214,24 @@ class AgentService:
                 await sandbox.ensure_sandbox()
         return sandbox
 
+    async def ensure_interactive_sandbox(self, session_id: str, user_id: str) -> tuple[Session, Sandbox]:
+        """Ensure the task has a private Sandbox for the interactive Jupyter view."""
+        # Interactive arbitrary-code execution is owner-only. Read-only session
+        # collaborators must not inherit Kernel access from view permission.
+        session = await self._session_repository.find_owned_by_id_and_user_id(session_id, user_id)
+        if not session:
+            raise RuntimeError("Session not found")
+        if session.sandbox_id:
+            return session, await self._restore_session_sandbox(session)
+        sandbox = await self._sandbox_runtime.allocate(session, dataset_ids=session.dataset_ids)
+        session.sandbox_id = sandbox.id
+        session.sandbox_dataset_ids = list(session.dataset_ids)
+        await self._session_repository.save(session)
+        ensure_api_ready = getattr(sandbox, "ensure_api_ready", None)
+        if callable(ensure_api_ready):
+            await ensure_api_ready()
+        return session, sandbox
+
     async def shell_view(self, session_id: str, shell_session_id: str, user_id: str) -> ShellViewResponse:
         """View shell session output, ensuring session belongs to the user"""
         logger.info(f"Getting shell view for session {session_id} for user {user_id}")

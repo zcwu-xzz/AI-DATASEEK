@@ -116,6 +116,15 @@ class TaskFeedbackResponse(BaseModel):
     detail: str = ""
 
 
+class OpenJupyterRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=200_000)
+    language: str = Field(default="python", min_length=1, max_length=32)
+
+
+class OpenJupyterResponse(BaseModel):
+    notebook_path: str
+
+
 class SessionCollaboratorUser(BaseModel):
     id: str
     fullname: str

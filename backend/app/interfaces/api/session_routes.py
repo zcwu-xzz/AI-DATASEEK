@@ -13,14 +13,16 @@ from app.application.services.token_service import TokenService
 from app.application.services.agent_profile_service import AgentProfileService
 from app.application.services.model_configuration_service import resolve_agent_profile
 from app.application.errors.exceptions import NotFoundError, UnauthorizedError
-from app.interfaces.dependencies import get_agent_service, get_current_user, get_optional_current_user, get_token_service, verify_signature_websocket, get_agent_profile_service
+from app.interfaces.dependencies import get_agent_service, get_current_user, get_optional_current_user, get_token_service, verify_signature_websocket, get_agent_profile_service, get_jupyter_service
 from app.interfaces.schemas.base import APIResponse
 from app.interfaces.schemas.session import (
     ChatRequest, ShellViewRequest, CreateSessionResponse, GetSessionResponse,
     ListSessionItem, ListSessionResponse, ShellViewResponse,
     ShareSessionResponse, SharedSessionResponse, CreateSessionRequest,
     UpdateSessionTitleRequest, TaskFeedbackRequest, TaskFeedbackResponse,
+    OpenJupyterRequest, OpenJupyterResponse,
 )
+from app.application.services.jupyter_service import JupyterService
 from app.interfaces.schemas.file import FileInfoResponse, FileViewRequest, FileViewResponse
 from app.interfaces.schemas.resource import AccessTokenRequest, SignedUrlResponse
 from app.interfaces.schemas.event import EventMapper
@@ -174,8 +176,10 @@ async def get_session(
 async def delete_session(
     session_id: str,
     current_user: User = Depends(get_current_user),
-    agent_service: AgentService = Depends(get_agent_service)
+    agent_service: AgentService = Depends(get_agent_service),
+    jupyter_service: JupyterService = Depends(get_jupyter_service),
 ) -> APIResponse[None]:
+    await jupyter_service.delete(session_id=session_id, user_id=current_user.id)
     await agent_service.delete_session(session_id, current_user.id)
     return APIResponse.success()
 
@@ -199,6 +203,30 @@ async def stop_session(
 ) -> APIResponse[None]:
     await agent_service.stop_session(session_id, current_user.id)
     return APIResponse.success()
+
+
+@router.post("/{session_id}/jupyter", response_model=APIResponse[OpenJupyterResponse])
+async def open_jupyter_notebook(
+    session_id: str,
+    request: OpenJupyterRequest,
+    current_user: User = Depends(get_current_user),
+    agent_service: AgentService = Depends(get_agent_service),
+    jupyter_service: JupyterService = Depends(get_jupyter_service),
+) -> APIResponse[OpenJupyterResponse]:
+    """Append an explicitly selected Python block to the task's private notebook."""
+    session, sandbox = await agent_service.ensure_interactive_sandbox(session_id, current_user.id)
+    result = await jupyter_service.open_notebook(
+        session_id=session_id,
+        user_id=current_user.id,
+        code=request.code,
+        language=request.language,
+        sandbox_id=session.sandbox_id,
+    )
+    open_browser_url = getattr(sandbox, "open_browser_url", None)
+    if not callable(open_browser_url):
+        raise RuntimeError("The task computer does not support opening JupyterLab")
+    await open_browser_url(result["browser_url"])
+    return APIResponse.success(OpenJupyterResponse(notebook_path=result["notebook_path"]))
 
 @router.post("/{session_id}/clear_unread_message_count", response_model=APIResponse[None])
 async def clear_unread_message_count(
