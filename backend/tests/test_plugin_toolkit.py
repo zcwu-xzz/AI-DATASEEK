@@ -27,7 +27,7 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     )
 
     names = _tool_names(toolkit)
-    assert len(names) == 61
+    assert len(names) == 73
     assert "scientific_inspect" in names
     assert "scientific_netcdf_visualize" in names
     assert "geoscience_collection_inspect" in names
@@ -42,6 +42,10 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     assert "tabular_visualize" in names
     assert "document_inspect" in names
     assert "document_visual_validate" in names
+    assert "pdf_ocr_text" in names
+    assert "presentation_inspect" in names
+    assert "hierarchical_array_extract" in names
+    assert "geoscience_vector_visualize" in names
     assert names == toolkit.dataset_fast_path_tool_names
     inspect = next(
         item for item in toolkit.get_tools()

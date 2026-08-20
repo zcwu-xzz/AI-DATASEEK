@@ -67,3 +67,32 @@ def test_raster_compatibility_and_artifact_validation(tmp_path):
     assert "transform" in incompatible["summary"]["differences"][0]["fields"]
     artifact = OPERATIONS.artifact_validate(str(first))
     assert artifact["summary"]["valid_sample_count"] == 6
+
+
+def test_netcdf_time_units_slices_climatology_and_missing_values(tmp_path, monkeypatch):
+    source, output_root = tmp_path / "source.nc", tmp_path / "output"
+    output_root.mkdir()
+    monkeypatch.setenv("AI_DATASEEK_OUTPUT_ROOT", str(output_root))
+    values = np.array([[[273.15]], [[np.nan]], [[275.15]], [[276.15]]], dtype="float32")
+    xr.Dataset(
+        {"temperature": (("time", "level", "lat"), values, {"units": "K"})},
+        coords={
+            "time": ("time", np.array(["2000-01-01", "2000-02-01", "2000-04-01", "2000-05-01"], dtype="datetime64[ns]")),
+            "level": ("level", [1000.0]),
+            "lat": ("lat", [30.0]),
+        },
+    ).to_netcdf(source, engine="h5netcdf")
+
+    timeline = OPERATIONS.time_axis_normalize(str(source), None)
+    assert timeline["summary"]["count"] == 4
+    assert timeline["summary"]["gap_count"] >= 1
+    converted = OPERATIONS.unit_convert(str(source), "temperature", "degC", str(output_root / "celsius.nc"))
+    assert converted["summary"]["target_unit"] == "degC"
+    with xr.open_dataset(output_root / "celsius.nc") as ds:
+        assert np.isclose(float(ds.temperature.isel(time=0, level=0, lat=0)), 0.0, atol=1e-5)
+    sliced = OPERATIONS.vertical_slice(str(source), "temperature", "level", 0, None, str(output_root / "level.nc"))
+    assert sliced["summary"]["shape"] == [4, 1]
+    climate = OPERATIONS.climatology(str(source), "temperature", "month", str(output_root / "climate.nc"))
+    assert climate["summary"]["groups"] == [1, 2, 4, 5]
+    quality = OPERATIONS.missing_gap_detect(str(source), "temperature", None)
+    assert quality["summary"]["missing_values"] == 1

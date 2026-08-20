@@ -15,6 +15,7 @@ const TOOLKIT_NAMES = new Set([
   'mcp',
   'skill',
   'scientific',
+  'jupyter',
 ]);
 
 const SECRET_KEY_PATTERN = [

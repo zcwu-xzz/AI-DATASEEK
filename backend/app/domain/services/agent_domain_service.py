@@ -29,6 +29,7 @@ from app.infrastructure.external.sandbox.runtime import (
 from app.core.config import get_settings
 from app.application.services.data_center_dataset_service import DataCenterDatasetService
 from app.application.services.dataset_request_resolver import DatasetRequestResolver, FrontControllerResolution
+from app.application.services.jupyter_service import JupyterService
 from app.domain.services.lightweight_task_runner import LightweightTaskRunner
 
 # Setup logging
@@ -65,6 +66,7 @@ class AgentDomainService:
         self._dataset_service = DataCenterDatasetService()
         self._dataset_request_resolver = DatasetRequestResolver()
         self._chat_bootstrap_tasks: set[asyncio.Task] = set()
+        self._jupyter_prewarm_tasks: set[asyncio.Task] = set()
         self._session_bootstrap_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = (
             weakref.WeakValueDictionary()
         )
@@ -74,7 +76,32 @@ class AgentDomainService:
         """Clean up all Agent's resources"""
         logger.info("Starting to close all Agents")
         await self._task_cls.destroy()
+        prewarm_tasks = list(self._jupyter_prewarm_tasks)
+        for task in prewarm_tasks:
+            task.cancel()
+        await asyncio.gather(*prewarm_tasks, return_exceptions=True)
         logger.info("All agents closed successfully")
+
+    def _prewarm_jupyter(self, session: Session, *, dataset_ids: list[str]) -> None:
+        """Warm Jupyter after the session's dataset-bound Sandbox is ready."""
+        if not dataset_ids or not session.sandbox_id:
+            return
+
+        async def warm() -> None:
+            try:
+                await JupyterService().prewarm(
+                    session_id=session.id,
+                    user_id=session.user_id,
+                    sandbox_id=session.sandbox_id,
+                )
+                logger.info("Prewarmed Jupyter for session %s", session.id)
+            except Exception as exc:
+                # Prewarming must never delay or fail the analysis request.
+                logger.warning("Jupyter prewarm failed for session %s: %s", session.id, exc)
+
+        task = asyncio.create_task(warm(), name=f"jupyter-prewarm-{session.id}")
+        self._jupyter_prewarm_tasks.add(task)
+        task.add_done_callback(self._jupyter_prewarm_tasks.discard)
 
     async def _create_task(
         self,
@@ -204,6 +231,8 @@ class AgentDomainService:
                     session.task_id = None
                     await self._session_repository.save(session)
                     raise
+
+        self._prewarm_jupyter(session, dataset_ids=requested_dataset_ids)
 
         browser = await sandbox.get_browser()
         if not browser:

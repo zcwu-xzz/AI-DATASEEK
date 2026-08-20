@@ -44,6 +44,10 @@ RUN apt-get update && apt-get install -y \
     hdf5-tools \
     proj-bin \
     libreoffice-writer \
+    libreoffice-impress \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-chi-sim \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -156,6 +160,7 @@ COPY tools /opt/ai-dataseek/tools
 RUN uv pip install --no-cache \
     --index-url https://mirrors.aliyun.com/pypi/simple/ \
     -r /opt/ai-dataseek/tools/documents/requirements.txt \
+    -r /opt/ai-dataseek/tools/presentations/requirements.txt \
     -r /opt/ai-dataseek/tools/tabular/requirements.txt
 
 # Give agents one deterministic command for nested dataset archives instead of
@@ -194,6 +199,8 @@ RUN python -m pip --version && \
     command -v ncdump && \
     command -v h5dump && \
     command -v projinfo && \
+    command -v tesseract && \
+    tesseract --list-langs 2>&1 | grep -F 'chi_sim' && \
     projinfo EPSG:4326 >/dev/null && \
     python /usr/local/lib/ai-dataseek/verify_geoscience_stack.py && \
     ai-dataseek-unpack --help >/dev/null && \

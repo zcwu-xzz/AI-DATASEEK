@@ -20,6 +20,7 @@ OPS = {
     "geoscience_trend": "trend",
     "geoscience_artifact_validate": "artifact-validate",
     "geoscience_vector_inspect": "vector-inspect",
+    "geoscience_vector_visualize": "vector-visualize",
     "geoscience_vector_transform": "vector-transform",
     "geoscience_zonal_statistics": "zonal-statistics",
     "geoscience_rasterize_vector": "rasterize-vector",
@@ -28,6 +29,11 @@ OPS = {
     "geoscience_change_detection": "change-detection",
     "geoscience_spatial_join": "spatial-join",
     "geoscience_transect_profile": "transect-profile",
+    "geoscience_raster_histogram_quantiles": "raster-histogram-quantiles",
+    "geoscience_raster_area_statistics": "raster-area-statistics",
+    "geoscience_raster_focal_statistics": "raster-focal-statistics",
+    "geoscience_raster_cog_validate_convert": "raster-cog-validate-convert",
+    "geoscience_raster_classification_compare": "raster-classification-compare",
 }
 
 def build_command(tool_name: str, arguments: dict[str, Any]) -> list[str]:
@@ -55,6 +61,11 @@ def build_command(tool_name: str, arguments: dict[str, Any]) -> list[str]:
         return command + [str(arguments["input_path"])]
     if tool_name == "geoscience_vector_inspect":
         return command + [str(arguments["input_path"])]
+    if tool_name == "geoscience_vector_visualize":
+        command += [str(arguments["input_path"]), str(arguments["output_path"]), "--cmap", str(arguments.get("cmap", "viridis")), "--max-features", str(arguments.get("max_features", 50000))]
+        if arguments.get("column"): command += ["--column", str(arguments["column"])]
+        if arguments.get("title"): command += ["--title", str(arguments["title"])]
+        return command
     if tool_name == "geoscience_vector_transform":
         command += [str(arguments["input_path"]), str(arguments["output_path"])]
         if arguments.get("target_crs"): command += ["--target-crs", str(arguments["target_crs"])]
@@ -74,6 +85,18 @@ def build_command(tool_name: str, arguments: dict[str, Any]) -> list[str]:
     if tool_name == "geoscience_transect_profile":
         import json
         return command + [str(arguments["input_path"]), json.dumps(arguments["points"], separators=(",", ":")), "--samples", str(arguments.get("samples", 100)), "--band", str(arguments.get("band", 1))]
+    if tool_name == "geoscience_raster_histogram_quantiles":
+        return command + [str(arguments["input_path"]), "--band", str(arguments.get("band", 1)), "--bins", str(arguments.get("bins", 32))]
+    if tool_name == "geoscience_raster_area_statistics":
+        return command + [str(arguments["input_path"]), "--band", str(arguments.get("band", 1))]
+    if tool_name == "geoscience_raster_focal_statistics":
+        return command + [str(arguments["input_path"]), "--method", str(arguments.get("method", "mean")), "--window", str(arguments.get("window", 3))]
+    if tool_name == "geoscience_raster_cog_validate_convert":
+        command += [str(arguments["input_path"])]
+        if arguments.get("output_path"): command += ["--output-path", str(arguments["output_path"])]
+        return command + ["--compression", str(arguments.get("compression", "deflate"))]
+    if tool_name == "geoscience_raster_classification_compare":
+        return command + [str(arguments["reference_path"]), str(arguments["prediction_path"]), "--reference-band", str(arguments.get("reference_band", 1)), "--prediction-band", str(arguments.get("prediction_band", 1))]
     for name, value in arguments.items():
         if value is None or name == "timeout_seconds": continue
         flag = "--" + name.replace("_", "-") if name.startswith("input_") or name in {"variable", "from_unit", "to_unit", "bit", "input_dir", "input_paths"} else None

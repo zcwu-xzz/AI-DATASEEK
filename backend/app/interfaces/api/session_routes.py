@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect, Query
+from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 from typing import AsyncGenerator, List, Optional
 from sse_starlette.event import ServerSentEvent
 from datetime import datetime
 import asyncio
+import httpx
 import websockets
 import logging
+from urllib.parse import quote, urlencode
 from app.interfaces.dependencies import get_file_service, get_user_repository
 
 from app.application.services.agent_service import AgentService
@@ -39,6 +42,7 @@ from app.infrastructure.models.documents import TaskFeedbackDocument
 
 logger = logging.getLogger(__name__)
 SESSION_POLL_INTERVAL = 5
+JUPYTER_TICKET_COOKIE = "dataseek_jupyter_ticket"
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -214,7 +218,7 @@ async def open_jupyter_notebook(
     jupyter_service: JupyterService = Depends(get_jupyter_service),
 ) -> APIResponse[OpenJupyterResponse]:
     """Append an explicitly selected Python block to the task's private notebook."""
-    session, sandbox = await agent_service.ensure_interactive_sandbox(session_id, current_user.id)
+    session, _sandbox = await agent_service.ensure_interactive_sandbox(session_id, current_user.id)
     result = await jupyter_service.open_notebook(
         session_id=session_id,
         user_id=current_user.id,
@@ -222,11 +226,196 @@ async def open_jupyter_notebook(
         language=request.language,
         sandbox_id=session.sandbox_id,
     )
-    open_browser_url = getattr(sandbox, "open_browser_url", None)
-    if not callable(open_browser_url):
-        raise RuntimeError("The task computer does not support opening JupyterLab")
-    await open_browser_url(result["browser_url"])
-    return APIResponse.success(OpenJupyterResponse(notebook_path=result["notebook_path"]))
+    ticket = get_token_service().create_resource_access_token(
+        "jupyter",
+        session_id,
+        current_user.id,
+        expire_minutes=15,
+    )
+    embed_url = (
+        f"{JupyterService.proxy_base_path(session_id)}"
+        f"lab/tree/{quote(result['notebook_path'], safe='')}?ticket={quote(ticket, safe='')}"
+    )
+    return APIResponse.success(OpenJupyterResponse(
+        notebook_path=result["notebook_path"],
+        embed_url=embed_url,
+    ))
+
+
+def _jupyter_ticket_user(token_service: TokenService, ticket: str, session_id: str) -> str | None:
+    payload = token_service.verify_token(ticket) if ticket else None
+    if not payload:
+        return None
+    if (
+        payload.get("type") != "resource_access"
+        or payload.get("resource_type") != "jupyter"
+        or payload.get("resource_id") != session_id
+    ):
+        return None
+    user_id = payload.get("user_id")
+    return user_id if isinstance(user_id, str) and user_id else None
+
+
+def _jupyter_ticket_from_request(request: Request) -> str:
+    return request.query_params.get("ticket", "") or request.cookies.get(JUPYTER_TICKET_COOKIE, "")
+
+
+@router.api_route(
+    "/{session_id}/jupyter-proxy/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+)
+async def proxy_jupyter_http(
+    session_id: str,
+    path: str,
+    request: Request,
+    token_service: TokenService = Depends(get_token_service),
+    jupyter_service: JupyterService = Depends(get_jupyter_service),
+):
+    """Proxy a task-owned Jupyter runtime without exposing its real token."""
+    ticket = _jupyter_ticket_from_request(request)
+    user_id = _jupyter_ticket_user(token_service, ticket, session_id)
+    if not user_id:
+        raise UnauthorizedError("Jupyter access ticket is invalid or expired")
+
+    origin, jupyter_token = await jupyter_service.proxy_target(session_id=session_id, user_id=user_id)
+    query = urlencode(
+        [(key, value) for key, value in request.query_params.multi_items() if key != "ticket"],
+        doseq=True,
+    )
+    upstream_url = f"{origin}{JupyterService.proxy_base_path(session_id)}{path}"
+    if query:
+        upstream_url = f"{upstream_url}?{query}"
+
+    excluded_request_headers = {"host", "authorization", "content-length", "connection"}
+    headers = {
+        key: value
+        for key, value in request.headers.items()
+        if key.lower() not in excluded_request_headers
+    }
+    headers["Authorization"] = f"token {jupyter_token}"
+    headers["X-Forwarded-Proto"] = request.url.scheme
+    headers["X-Forwarded-Host"] = request.headers.get("host", "")
+
+    client = httpx.AsyncClient(timeout=None, follow_redirects=False)
+    upstream_request = client.build_request(
+        request.method,
+        upstream_url,
+        headers=headers,
+        content=request.stream(),
+    )
+    upstream = await client.send(upstream_request, stream=True)
+
+    async def body_stream():
+        try:
+            async for chunk in upstream.aiter_raw():
+                yield chunk
+        finally:
+            await upstream.aclose()
+            await client.aclose()
+
+    # Keep Set-Cookie out of the mapping below: HTTP permits multiple cookie
+    # headers and collapsing them into a comma-separated value breaks browser
+    # authentication/XSRF handling inside the iframe.
+    excluded_response_headers = {"content-length", "connection", "transfer-encoding", "set-cookie"}
+    response_headers = {
+        key: value
+        for key, value in upstream.headers.items()
+        if key.lower() not in excluded_response_headers
+    }
+    response_headers["Content-Security-Policy"] = "frame-ancestors 'self'"
+    response_headers["Referrer-Policy"] = "no-referrer"
+    response = StreamingResponse(
+        body_stream(),
+        status_code=upstream.status_code,
+        headers=response_headers,
+        media_type=upstream.headers.get("content-type"),
+    )
+    for key, value in upstream.headers.raw:
+        if key.lower() == b"set-cookie":
+            response.raw_headers.append((key, value))
+    response.set_cookie(
+        JUPYTER_TICKET_COOKIE,
+        ticket,
+        max_age=900,
+        httponly=True,
+        secure=request.url.scheme == "https",
+        samesite="lax",
+        path=JupyterService.proxy_base_path(session_id),
+    )
+    return response
+
+
+@router.websocket("/{session_id}/jupyter-proxy/{path:path}")
+async def proxy_jupyter_websocket(
+    websocket: WebSocket,
+    session_id: str,
+    path: str,
+    token_service: TokenService = Depends(get_token_service),
+    jupyter_service: JupyterService = Depends(get_jupyter_service),
+) -> None:
+    ticket = websocket.query_params.get("ticket", "") or websocket.cookies.get(JUPYTER_TICKET_COOKIE, "")
+    user_id = _jupyter_ticket_user(token_service, ticket, session_id)
+    if not user_id:
+        await websocket.close(code=1008, reason="Jupyter access ticket is invalid or expired")
+        return
+
+    origin, jupyter_token = await jupyter_service.proxy_target(session_id=session_id, user_id=user_id)
+    query = urlencode(
+        [(key, value) for key, value in websocket.query_params.multi_items() if key != "ticket"],
+        doseq=True,
+    )
+    upstream_url = (
+        f"{origin.replace('http://', 'ws://', 1)}"
+        f"{JupyterService.proxy_base_path(session_id)}{path}"
+    )
+    if query:
+        upstream_url = f"{upstream_url}?{query}"
+
+    requested_protocols = [
+        value.strip()
+        for value in websocket.headers.get("sec-websocket-protocol", "").split(",")
+        if value.strip()
+    ]
+    try:
+        async with websockets.connect(
+            upstream_url,
+            additional_headers={"Authorization": f"token {jupyter_token}"},
+            subprotocols=requested_protocols or None,
+            origin=origin,
+            max_size=None,
+        ) as upstream:
+            await websocket.accept(subprotocol=upstream.subprotocol)
+
+            async def client_to_jupyter() -> None:
+                while True:
+                    message = await websocket.receive()
+                    if message["type"] == "websocket.disconnect":
+                        return
+                    data = message.get("bytes") if message.get("bytes") is not None else message.get("text")
+                    if data is not None:
+                        await upstream.send(data)
+
+            async def jupyter_to_client() -> None:
+                async for data in upstream:
+                    if isinstance(data, bytes):
+                        await websocket.send_bytes(data)
+                    else:
+                        await websocket.send_text(data)
+
+            tasks = [asyncio.create_task(client_to_jupyter()), asyncio.create_task(jupyter_to_client())]
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for task in pending:
+                task.cancel()
+            for task in done:
+                task.result()
+    except WebSocketDisconnect:
+        return
+    except Exception as exc:
+        logger.error("Jupyter WebSocket proxy failed for session %s: %s", session_id, exc)
+        try:
+            await websocket.close(code=1011, reason="Jupyter WebSocket proxy failed")
+        except RuntimeError:
+            pass
 
 @router.post("/{session_id}/clear_unread_message_count", response_model=APIResponse[None])
 async def clear_unread_message_count(

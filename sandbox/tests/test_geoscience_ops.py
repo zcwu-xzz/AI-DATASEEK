@@ -18,6 +18,7 @@ from scripts.geoscience_ops import (
     sample_raster,
     transect_profile,
     vector_inspect,
+    vector_visualize,
     zonal_statistics,
 )
 
@@ -61,6 +62,15 @@ def test_vector_inspect_and_zonal_statistics(tmp_path):
     stats = zonal_statistics(Namespace(raster_path=str(raster), vector_path=str(vector)))
     assert stats["zones"][0]["count"] == 4
     assert stats["zones"][0]["mean"] == 2.5
+
+
+def test_vector_visualization_writes_png(tmp_path, monkeypatch):
+    from shapely.geometry import Point
+    monkeypatch.setenv("AI_DATASEEK_OUTPUT_ROOT", str(tmp_path))
+    vector, output = tmp_path / "points.geojson", tmp_path / "points.png"
+    gpd.GeoDataFrame({"value": [1.0, 2.0]}, geometry=[Point(100, 30), Point(101, 31)], crs="EPSG:4326").to_file(vector, driver="GeoJSON")
+    rendered = vector_visualize(Namespace(input_path=str(vector), output_path=str(output), column="value", title="Stations", cmap="viridis", max_features=100))
+    assert rendered["artifacts"][0]["size_bytes"] > 0
 
 
 def test_grid_alignment_change_detection_and_transect(tmp_path, monkeypatch):

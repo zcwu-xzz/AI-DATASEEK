@@ -38,3 +38,28 @@ def test_docx_structure_tables_and_compare(tmp_path,monkeypatch):
     structure=OPS.docx_structure({"input_path":str(first),"max_chars":10000}); assert structure["summary"]["blocks"][0]["type"]=="heading"
     tables=OPS.docx_tables({"input_path":str(first),"output_dir":str(tmp_path/"tables"),"max_tables":5}); assert tables["summary"]["table_count"]==1
     compared=OPS.compare_documents({"left_path":str(first),"right_path":str(second),"max_chars":10000}); assert compared["summary"]["similarity"]==1.0
+
+
+def test_pdf_ocr_is_page_bounded_and_writes_provenance(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    path=tmp_path/"scan.pdf"; _pdf(path)
+    monkeypatch.setenv("AI_DATASEEK_OUTPUT_ROOT",str(tmp_path))
+    monkeypatch.setattr(OPS.subprocess,"run",lambda *args,**kwargs:SimpleNamespace(returncode=0,stdout="温度 observations".encode(),stderr=b""))
+    result=OPS.pdf_ocr({"input_path":str(path),"languages":"chi_sim+eng","max_pages":1,"output_path":str(tmp_path/"ocr.json")})
+    assert result["summary"]["pages_ocrd"] == 1
+    assert result["summary"]["pages"][0]["page"] == 1
+    assert result["artifacts"][0]["size_bytes"] > 0
+
+
+def test_pdf_ocr_rejects_invalid_languages(tmp_path):
+    path=tmp_path/"scan.pdf"; _pdf(path)
+    try: OPS.pdf_ocr({"input_path":str(path),"languages":"bad language"})
+    except ValueError as exc: assert "language" in str(exc)
+    else: raise AssertionError("unsafe OCR language was accepted")
+
+
+def test_presentation_plugin_is_discoverable():
+    import importlib.util
+    plugin=Path(__file__).resolve().parents[2]/"tools"/"presentations"/"manifest.json"
+    manifest=__import__("json").loads(plugin.read_text())
+    assert {item["name"] for item in manifest["tools"]} == {"presentation_inspect","pptx_extract_content","pptx_render_slides"}

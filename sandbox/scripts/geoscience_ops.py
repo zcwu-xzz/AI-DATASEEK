@@ -206,6 +206,25 @@ def vector_inspect(args: argparse.Namespace) -> dict[str, Any]:
     gdf = gpd.read_file(args.input_path)
     return result("vector_inspect", feature_count=len(gdf), crs=str(gdf.crs) if gdf.crs else None, geometry_types=sorted(set(gdf.geometry.geom_type.dropna())), bounds=list(gdf.total_bounds), columns=list(gdf.columns))
 
+def vector_visualize(args: argparse.Namespace) -> dict[str, Any]:
+    import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+    gdf = gpd.read_file(args.input_path)
+    if len(gdf) > args.max_features:
+        step = max(1, math.ceil(len(gdf) / args.max_features)); plotted = gdf.iloc[::step].head(args.max_features).copy(); sampled = True
+    else: plotted = gdf; sampled = False
+    if args.column and args.column not in plotted.columns: raise GeoScienceError(f"unknown vector attribute: {args.column}")
+    if plotted.empty: raise GeoScienceError("vector layer has no features to render")
+    out = output_path(args.output_path); fig, ax = plt.subplots(figsize=(10, 7), constrained_layout=True)
+    geometry_types=set(plotted.geometry.geom_type.dropna()); point_only=bool(geometry_types) and all(name in {"Point","MultiPoint"} for name in geometry_types)
+    kwargs: dict[str, Any] = {"ax": ax, "alpha": .85}
+    if args.column: kwargs.update(column=args.column, cmap=args.cmap, legend=True)
+    elif point_only: kwargs.update(color="#2563eb")
+    else: kwargs.update(facecolor="#60a5fa", edgecolor="#1e3a8a", linewidth=.5)
+    if point_only: kwargs.update(markersize=12)
+    plotted.plot(**kwargs); ax.set_title(args.title or Path(args.input_path).stem); ax.set_xlabel("X"); ax.set_ylabel("Y"); ax.grid(True, alpha=.2); ax.set_aspect("equal", adjustable="datalim")
+    fig.savefig(out, dpi=160); plt.close(fig)
+    return result("vector_visualize", feature_count=len(gdf), rendered_features=len(plotted), sampled=sampled, column=args.column, crs=str(gdf.crs) if gdf.crs else None, artifacts=[{"path":str(out),"type":"image/png","size_bytes":out.stat().st_size}])
+
 def vector_transform(args: argparse.Namespace) -> dict[str, Any]:
     gdf = gpd.read_file(args.input_path)
     if args.target_crs: gdf = gdf.to_crs(args.target_crs)
@@ -283,6 +302,59 @@ def transect_profile(args: argparse.Namespace) -> dict[str, Any]:
     with rasterio.open(args.input_path) as src: values = [json_value(v[args.band-1]) for v in src.sample(coords)]
     return result("transect_profile", distances=json_value(distances * total), coordinates=coords, values=values, band=args.band)
 
+def raster_histogram_quantiles(args: argparse.Namespace) -> dict[str, Any]:
+    with rasterio.open(args.input_path) as src:
+        arr=src.read(args.band, masked=True).compressed()
+    if not arr.size: raise GeoScienceError("raster contains no valid pixels")
+    qs=np.percentile(arr, [1,5,25,50,75,95,99]); hist, edges=np.histogram(arr, bins=args.bins)
+    return result("raster_histogram_quantiles", count=int(arr.size), minimum=json_value(arr.min()), maximum=json_value(arr.max()), mean=json_value(arr.mean()), standard_deviation=json_value(arr.std()), quantiles={str(q):json_value(v) for q,v in zip([1,5,25,50,75,95,99],qs)}, histogram_counts=hist.tolist(), histogram_edges=edges.tolist())
+
+def raster_area_statistics(args: argparse.Namespace) -> dict[str, Any]:
+    with rasterio.open(args.input_path) as src:
+        if not src.crs: raise GeoScienceError("CRS is required for area statistics")
+        valid=~src.read(args.band, masked=True).mask; pixel_area=None
+        if src.crs.is_projected: pixel_area=abs(src.transform.a*src.transform.e)
+        else:
+            # spherical cell area approximation for geographic rasters
+            radius=6371008.8; ys=np.arange(src.height)+.5; lats=src.transform.f + ys*src.transform.e
+            lat1=np.deg2rad(lats-src.transform.e/2); lat2=np.deg2rad(lats+src.transform.e/2); pixel_area=(radius**2)*np.deg2rad(abs(src.transform.a))*(np.sin(lat2)-np.sin(lat1))
+        count=int(valid.sum()); area=float(np.sum(pixel_area*valid)) if np.ndim(pixel_area) else float(count*pixel_area)
+    return result("raster_area_statistics", valid_pixels=count, area_square_units=area, crs=str(src.crs), method="projected_pixel_area" if np.ndim(pixel_area)==0 else "spherical_geographic_pixel_area")
+
+def raster_focal_statistics(args: argparse.Namespace) -> dict[str, Any]:
+    from scipy.ndimage import generic_filter
+    with rasterio.open(args.input_path) as src:
+        data=src.read(args.band, masked=True).filled(np.nan).astype(float)
+    size=args.window
+    funcs={"mean":np.nanmean,"median":np.nanmedian,"std":np.nanstd,"min":np.nanmin,"max":np.nanmax}
+    if args.method not in funcs: raise GeoScienceError("unsupported focal method")
+    out=generic_filter(data, funcs[args.method], size=size, mode="nearest")
+    return result("raster_focal_statistics", method=args.method, window=size, minimum=json_value(np.nanmin(out)), maximum=json_value(np.nanmax(out)), mean=json_value(np.nanmean(out)))
+
+def raster_cog_validate_convert(args: argparse.Namespace) -> dict[str, Any]:
+    with rasterio.open(args.input_path) as src:
+        block=src.profile.get("tiled",False); overviews=src.overviews(1); compression=str(src.profile.get("compress"))
+        valid=bool(block and overviews and compression not in {"None", "none"})
+        if args.output_path:
+            out=output_path(args.output_path); profile=src.profile.copy(); profile.update(tiled=True, compress=args.compression, BIGTIFF="IF_SAFER")
+            with rasterio.open(out,"w",**profile) as dst:
+                for b in range(1,src.count+1): dst.write(src.read(b),b)
+                factors=[2,4,8,16]
+                dst.build_overviews([f for f in factors if f < max(src.width,src.height)], Resampling.nearest); dst.update_tags(ns="rio_overview", resampling="nearest")
+            return result("raster_cog_validate_convert", cog_before=valid, artifacts=[{"path":str(out),"type":"image/tiff","size_bytes":out.stat().st_size}])
+    return result("raster_cog_validate_convert", cog_compliant=valid, tiled=block, overview_levels=overviews, compression=compression)
+
+def raster_classification_compare(args: argparse.Namespace) -> dict[str, Any]:
+    with rasterio.open(args.reference_path) as ref, rasterio.open(args.prediction_path) as pred:
+        if (ref.crs, ref.transform, ref.shape) != (pred.crs, pred.transform, pred.shape): raise GeoScienceError("classification rasters must be grid-aligned")
+        a=ref.read(args.reference_band, masked=True); b=pred.read(args.prediction_band, masked=True); valid=~(np.ma.getmaskarray(a)|np.ma.getmaskarray(b)); y=a.data[valid].astype(int); p=b.data[valid].astype(int)
+    labels=sorted(set(y.tolist())|set(p.tolist())); matrix=np.zeros((len(labels),len(labels)),dtype=int); lookup={v:i for i,v in enumerate(labels)}
+    for actual, predicted in zip(y,p): matrix[lookup[actual],lookup[predicted]] += 1
+    total=int(matrix.sum()); accuracy=float(np.trace(matrix)/total) if total else None; ious=[]
+    for i in range(len(labels)):
+        union=matrix[i,:].sum()+matrix[:,i].sum()-matrix[i,i]; ious.append(float(matrix[i,i]/union) if union else None)
+    return result("raster_classification_compare", labels=labels, confusion_matrix=matrix.tolist(), valid_pixels=total, overall_accuracy=accuracy, mean_iou=float(np.nanmean([x for x in ious if x is not None])) if any(x is not None for x in ious) else None, per_class_iou=ious)
+
 def main() -> int:
     p = argparse.ArgumentParser(); sub = p.add_subparsers(dest="op", required=True)
     def common(name: str, input_paths=True):
@@ -301,6 +373,7 @@ def main() -> int:
         c = common(name); c.add_argument("output_path"); c.add_argument("--variable")
     c = sub.add_parser("artifact-validate"); c.add_argument("input_path")
     c = sub.add_parser("vector-inspect"); c.add_argument("input_path")
+    c = sub.add_parser("vector-visualize"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--column"); c.add_argument("--title"); c.add_argument("--cmap",default="viridis"); c.add_argument("--max-features",type=int,default=50000)
     c = sub.add_parser("vector-transform"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--target-crs")
     c = sub.add_parser("zonal-statistics"); c.add_argument("raster_path"); c.add_argument("vector_path")
     c = sub.add_parser("rasterize-vector"); c.add_argument("reference_raster"); c.add_argument("vector_path"); c.add_argument("output_path")
@@ -309,6 +382,11 @@ def main() -> int:
     c = sub.add_parser("change-detection"); c.add_argument("before_path"); c.add_argument("after_path"); c.add_argument("output_path"); c.add_argument("--band", type=int, default=1)
     c = sub.add_parser("spatial-join"); c.add_argument("left_path"); c.add_argument("right_path"); c.add_argument("output_path"); c.add_argument("--predicate", choices=("intersects","within","contains","touches"), default="intersects"); c.add_argument("--how", choices=("left","inner"), default="left")
     c = sub.add_parser("transect-profile"); c.add_argument("input_path"); c.add_argument("points"); c.add_argument("--samples", type=int, default=100); c.add_argument("--band", type=int, default=1)
+    c = sub.add_parser("raster-histogram-quantiles"); c.add_argument("input_path"); c.add_argument("--band",type=int,default=1); c.add_argument("--bins",type=int,default=32)
+    c = sub.add_parser("raster-area-statistics"); c.add_argument("input_path"); c.add_argument("--band",type=int,default=1)
+    c = sub.add_parser("raster-focal-statistics"); c.add_argument("input_path"); c.add_argument("--method",choices=("mean","median","std","min","max"),default="mean"); c.add_argument("--window",type=int,default=3)
+    c = sub.add_parser("raster-cog-validate-convert"); c.add_argument("input_path"); c.add_argument("--output-path"); c.add_argument("--compression",default="deflate")
+    c = sub.add_parser("raster-classification-compare"); c.add_argument("reference_path"); c.add_argument("prediction_path"); c.add_argument("--reference-band",type=int,default=1); c.add_argument("--prediction-band",type=int,default=1)
     a = p.parse_args()
     try:
         if a.op == "collection-inspect": r = collection_inspect(a)
@@ -323,6 +401,7 @@ def main() -> int:
         elif a.op == "scene-composite": r = scene_composite(a)
         elif a.op in {"climatology", "anomaly", "trend"}: r = temporal_stat(a, a.op)
         elif a.op == "vector-inspect": r = vector_inspect(a)
+        elif a.op == "vector-visualize": r = vector_visualize(a)
         elif a.op == "vector-transform": r = vector_transform(a)
         elif a.op == "zonal-statistics": r = zonal_statistics(a)
         elif a.op == "rasterize-vector": r = rasterize_vector(a)
@@ -331,6 +410,11 @@ def main() -> int:
         elif a.op == "change-detection": r = change_detection(a)
         elif a.op == "spatial-join": r = spatial_join(a)
         elif a.op == "transect-profile": r = transect_profile(a)
+        elif a.op == "raster-histogram-quantiles": r = raster_histogram_quantiles(a)
+        elif a.op == "raster-area-statistics": r = raster_area_statistics(a)
+        elif a.op == "raster-focal-statistics": r = raster_focal_statistics(a)
+        elif a.op == "raster-cog-validate-convert": r = raster_cog_validate_convert(a)
+        elif a.op == "raster-classification-compare": r = raster_classification_compare(a)
         else: r = artifact_validate(a)
     except Exception as exc:
         r = {"success": False, "operation": a.op, "error": f"{type(exc).__name__}: {exc}"}

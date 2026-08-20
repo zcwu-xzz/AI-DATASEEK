@@ -1816,7 +1816,85 @@ class ExecutionAgent(BaseAgent):
         coordinate_completion = self._coordinate_inspect_completion(tool_results)
         if coordinate_completion is not None:
             return coordinate_completion
+        netcdf_completion = self._netcdf_operator_completion(tool_results)
+        if netcdf_completion is not None:
+            return netcdf_completion
         return None
+
+    @staticmethod
+    def _successful_data_foundation_payload(tool_result: Any) -> Optional[dict[str, Any]]:
+        """Decode a successful plugin result without sending it back to the LLM."""
+        if getattr(tool_result, "name", None) not in {
+            "netcdf_time_axis_normalize",
+            "netcdf_unit_convert",
+            "netcdf_vertical_slice",
+            "netcdf_climatology",
+            "netcdf_missing_gap_detect",
+        }:
+            return None
+        artifact = getattr(tool_result, "artifact", None)
+        if not isinstance(artifact, ToolResult) or artifact.success is not True:
+            return None
+        data = artifact.data if isinstance(artifact.data, dict) else {}
+        raw = data.get("output")
+        try:
+            payload = json.loads(raw) if isinstance(raw, str) else raw
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+        return payload if isinstance(payload, dict) and payload.get("success") is True else None
+
+    def _netcdf_operator_completion(self, tool_results: list[Any]) -> Optional[str]:
+        """Render bounded NetCDF operator evidence and stop the tool loop."""
+        match = next(
+            (
+                (result, payload)
+                for result in tool_results
+                if (payload := self._successful_data_foundation_payload(result)) is not None
+            ),
+            None,
+        )
+        if match is None:
+            return None
+        tool_result, payload = match
+        operation = str(payload.get("operation") or getattr(tool_result, "name", "NetCDF operation"))
+        summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+        language = str(getattr(getattr(self, "_current_plan", None), "language", "")).casefold()
+        chinese = language == "zh"
+        labels = {
+            "netcdf_time_axis_normalize": "时间轴已规范化" if chinese else "Time axis normalized",
+            "netcdf_unit_convert": "单位转换已完成" if chinese else "Unit conversion completed",
+            "netcdf_vertical_slice": "垂向切片已完成" if chinese else "Vertical slice completed",
+            "netcdf_climatology": "气候态计算已完成" if chinese else "Climatology completed",
+            "netcdf_missing_gap_detect": "缺测与时间缺口检查已完成" if chinese else "Missing-value and gap check completed",
+        }
+        lines = [labels.get(operation, operation)]
+        preferred = {
+            "netcdf_time_axis_normalize": ("time_name", "count", "calendar", "first", "last", "duplicate_count", "gap_count"),
+            "netcdf_unit_convert": ("variable", "source_unit", "target_unit", "scale", "offset"),
+            "netcdf_vertical_slice": ("variable", "dimension", "requested_index", "requested_value", "selected_value", "shape"),
+            "netcdf_climatology": ("variable", "frequency", "groups", "shape", "minimum", "mean", "maximum"),
+            "netcdf_missing_gap_detect": ("variable", "total_values", "missing_values", "missing_fraction", "time_axis"),
+        }.get(operation, tuple(summary.keys()))
+        shown = []
+        for key in preferred:
+            value = summary.get(key)
+            if value is None or value == [] or value == "":
+                continue
+            label = key.replace("_", " ")
+            shown.append(f"{label}={value}")
+        if shown:
+            lines.append(("；" if chinese else "; ").join(shown))
+        warnings = payload.get("warnings")
+        if isinstance(warnings, list) and warnings:
+            lines.append(("提示：" if chinese else "Warnings: ") + ("；" if chinese else "; ").join(str(item) for item in warnings[:5]))
+        attachments = []
+        for item in payload.get("artifacts") or []:
+            if not isinstance(item, dict):
+                continue
+            path = self._validated_output_attachment(item.get("path"))
+            if path and path not in attachments:
+                attachments.append(path)
+        return ExecutionResult(success=True, result="\n".join(lines), attachments=attachments).model_dump_json()
 
     def _netcdf_visualization_completion(self, tool_results: list[Any]) -> Optional[str]:
         payload = next((
@@ -3262,7 +3340,7 @@ class ExecutionAgent(BaseAgent):
             logger.warning("Execution result omitted the required substantive result")
             return None
         if re.fullmatch(
-            r"(?:placeholder|tbd|todo|n/?a|待补充|占位(?:符|文本)?|暂无(?:内容|结果)?)\.?",
+            r"(?:placeholder|placeholder[-_ ]?not[-_ ]?used|tbd|todo|n/?a|待补充|占位(?:符|文本)?|暂无(?:内容|结果)?)\.?",
             result_text,
             re.IGNORECASE,
         ):

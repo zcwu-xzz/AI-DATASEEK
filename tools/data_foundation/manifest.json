@@ -11,6 +11,20 @@
       "parameters": {"type":"object","properties":{"input_paths":{"type":"array","items":{"type":"string"},"minItems":1}},"required":["input_paths"],"additionalProperties":false}
     },
     {
+      "name": "hierarchical_store_inspect",
+      "description": "Inspect the bounded group and array tree of an HDF5 or Zarr store, including shapes, dtypes, chunks, compression and attributes without loading array values.",
+      "scopes": ["dataset_fast_path"],
+      "timeout_seconds": 60,
+      "parameters": {"type":"object","properties":{"input_path":{"type":"string"},"max_entries":{"type":"integer","minimum":1,"maximum":5000,"default":500}},"required":["input_path"],"additionalProperties":false}
+    },
+    {
+      "name": "hierarchical_array_extract",
+      "description": "Extract an explicitly named HDF5 dataset or Zarr array with bounded per-dimension slices and write a NumPy, CSV or JSON artifact.",
+      "scopes": ["dataset_fast_path"],
+      "timeout_seconds": 120,
+      "parameters": {"type":"object","properties":{"input_path":{"type":"string"},"dataset_path":{"type":"string"},"selection":{"type":"array","items":{"anyOf":[{"type":"integer"},{"type":"string","pattern":"^-?[0-9]*:-?[0-9]*(?::-?[0-9]+)?$"}]},"maxItems":16,"default":[]},"max_values":{"type":"integer","minimum":1,"maximum":5000000,"default":1000000},"output_path":{"type":"string"}},"required":["input_path","dataset_path","output_path"],"additionalProperties":false}
+    },
+    {
       "name": "cf_semantics_validate",
       "description": "Validate coordinate, time calendar, missing-value, scale/offset, units, bounds and grid-mapping semantics in one NetCDF-compatible dataset before analysis.",
       "scopes": ["dataset_fast_path"],
@@ -44,6 +58,26 @@
       "scopes": ["dataset_fast_path"],
       "timeout_seconds": 60,
       "parameters": {"type":"object","properties":{"input_path":{"type":"string"}},"required":["input_path"],"additionalProperties":false}
+    },
+    {
+      "name":"netcdf_time_axis_normalize","description":"Decode a CF time axis, report calendar/duplicates/gaps and return normalized ISO timestamps.","scopes":["dataset_fast_path"],"timeout_seconds":60,
+      "parameters":{"type":"object","properties":{"input_path":{"type":"string"},"time_name":{"type":["string","null"]}},"required":["input_path"],"additionalProperties":false}
+    },
+    {
+      "name":"netcdf_unit_convert","description":"Convert one explicit NetCDF variable to a supported physical unit and write a NetCDF artifact.","scopes":["dataset_fast_path"],"timeout_seconds":120,
+      "parameters":{"type":"object","properties":{"input_path":{"type":"string"},"variable":{"type":"string"},"target_unit":{"type":"string"},"output_path":{"type":"string"}},"required":["input_path","variable","target_unit","output_path"],"additionalProperties":false}
+    },
+    {
+      "name":"netcdf_vertical_slice","description":"Extract a bounded level/depth/pressure slice from an explicit NetCDF variable and write a NetCDF artifact.","scopes":["dataset_fast_path"],"timeout_seconds":120,
+      "parameters":{"type":"object","properties":{"input_path":{"type":"string"},"variable":{"type":"string"},"dimension":{"type":"string"},"index":{"type":["integer","null"]},"value":{"type":["number","null"]},"output_path":{"type":"string"}},"required":["input_path","variable","dimension","output_path"],"additionalProperties":false}
+    },
+    {
+      "name":"netcdf_climatology","description":"Compute monthly or seasonal climatology for an explicit time-dependent NetCDF variable.","scopes":["dataset_fast_path"],"timeout_seconds":120,
+      "parameters":{"type":"object","properties":{"input_path":{"type":"string"},"variable":{"type":"string"},"frequency":{"type":"string","enum":["month","season"]},"output_path":{"type":["string","null"]}},"required":["input_path","variable"],"additionalProperties":false}
+    },
+    {
+      "name":"netcdf_missing_gap_detect","description":"Detect missing values and temporal gaps in an explicit NetCDF variable.","scopes":["dataset_fast_path"],"timeout_seconds":60,
+      "parameters":{"type":"object","properties":{"input_path":{"type":"string"},"variable":{"type":"string"},"time_name":{"type":["string","null"]}},"required":["input_path","variable"],"additionalProperties":false}
     }
   ]
 }

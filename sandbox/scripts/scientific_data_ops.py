@@ -71,6 +71,72 @@ def _validated_output(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
+def _choose_variable(ds: xr.Dataset, name: str | None) -> str:
+    if name:
+        if name not in ds.data_vars: raise ScientificDataError(f"unknown variable: {name}")
+        return name
+    candidates = [n for n, v in ds.data_vars.items() if np.issubdtype(v.dtype, np.number) and v.ndim]
+    if len(candidates) != 1: raise ScientificDataError("variable is required when multiple numeric variables exist")
+    return candidates[0]
+
+def netcdf_resample_time(path: Path, output: Path, variable: str | None, frequency: str, method: str) -> dict[str, Any]:
+    with _open_netcdf(path) as ds:
+        name = _choose_variable(ds, variable)
+        if "time" not in ds[name].dims: raise ScientificDataError("time dimension is required")
+        if method not in {"mean", "sum", "min", "max"}: raise ScientificDataError("method must be mean, sum, min or max")
+        value = getattr(ds[name].resample(time=frequency), method)()
+        out = _validated_output(output); value.to_dataset(name=name).to_netcdf(out)
+    return _result(True, "resample-time", variable=name, frequency=frequency, method=method, artifacts=[{"path": str(out), "type":"application/x-netcdf", "size_bytes":out.stat().st_size}])
+
+def netcdf_regrid(path: Path, output: Path, variable: str | None, target_path: Path | None, method: str) -> dict[str, Any]:
+    with _open_netcdf(path) as ds:
+        name = _choose_variable(ds, variable)
+        lat = next((n for n,v in ds.coords.items() if _coord_role(n,v)=="latitude"), None); lon = next((n for n,v in ds.coords.items() if _coord_role(n,v)=="longitude"), None)
+        if not lat or not lon: raise ScientificDataError("latitude and longitude coordinates are required")
+        if not target_path: raise ScientificDataError("target_path is required")
+        with _open_netcdf(target_path) as target:
+            tlat = next((n for n,v in target.coords.items() if _coord_role(n,v)=="latitude"), None); tlon = next((n for n,v in target.coords.items() if _coord_role(n,v)=="longitude"), None)
+            if not tlat or not tlon: raise ScientificDataError("target grid lacks latitude/longitude coordinates")
+            if method not in {"nearest", "linear"}: raise ScientificDataError("method must be nearest or linear")
+            result = ds[[name]].interp({lat: target[tlat], lon: target[tlon]}, method=method)
+            out = _validated_output(output); result.to_netcdf(out)
+    return _result(True, "regrid", variable=name, method=method, artifacts=[{"path":str(out),"type":"application/x-netcdf","size_bytes":out.stat().st_size}])
+
+def netcdf_area_weighted(path: Path, variable: str | None, method: str, lat_name: str | None) -> dict[str, Any]:
+    with _open_netcdf(path) as ds:
+        name = _choose_variable(ds, variable); arr = ds[name]
+        lat = lat_name or next((n for n,v in ds.coords.items() if _coord_role(n,v)=="latitude"), None)
+        if not lat or lat not in arr.dims: raise ScientificDataError("latitude coordinate is required")
+        weights = np.cos(np.deg2rad(ds[lat])); dims=[d for d in arr.dims if d != "time"]
+        if method == "mean": value = arr.weighted(weights).mean(dim=dims, skipna=True)
+        elif method == "sum": value = (arr * weights).sum(dim=dims, skipna=True)
+        else: raise ScientificDataError("method must be mean or sum")
+        return _result(True, "area-weighted", variable=name, method=method, values=_json_value(value.values), dimensions=list(value.dims))
+
+def netcdf_anomaly_standardize(path: Path, output: Path, variable: str | None, baseline_start: str, baseline_end: str, mode: str) -> dict[str, Any]:
+    with _open_netcdf(path) as ds:
+        name = _choose_variable(ds, variable); arr=ds[name]
+        if "time" not in arr.dims: raise ScientificDataError("time dimension is required")
+        base=arr.sel(time=slice(baseline_start, baseline_end)); climatology=base.groupby("time.month").mean("time", skipna=True)
+        anomaly=arr.groupby("time.month") - climatology
+        if mode == "percent": anomaly=100*anomaly/climatology.where(climatology != 0)
+        elif mode == "standardized":
+            sd=base.groupby("time.month").std("time", skipna=True); anomaly=anomaly.groupby("time.month")/sd.where(sd != 0)
+        elif mode != "absolute": raise ScientificDataError("mode must be absolute, percent or standardized")
+        out=_validated_output(output); anomaly.to_dataset(name=name).to_netcdf(out)
+    return _result(True,"anomaly-standardize",variable=name,mode=mode,baseline=[baseline_start,baseline_end],artifacts=[{"path":str(out),"type":"application/x-netcdf","size_bytes":out.stat().st_size}])
+
+def netcdf_export_cog(path: Path, output: Path, variable: str | None, indices: dict[str,int]) -> dict[str, Any]:
+    converted=convert_netcdf_to_geotiff(path, output, variable, indices)
+    with rasterio.open(output, "r+") as dst:
+        profile=dst.profile.copy(); data=dst.read(); dst.close()
+    tmp=output.with_suffix(".cog.tif")
+    with rasterio.open(output) as src:
+        prof=src.profile.copy(); prof.update(driver="COG", compress="deflate", BIGTIFF="IF_SAFER")
+        with rasterio.open(tmp,"w",**prof) as dst: dst.write(src.read())
+    tmp.replace(output)
+    return _result(True,"export-cog",artifacts=[{"path":str(output),"type":"image/tiff","size_bytes":output.stat().st_size}])
+
 
 def _attrs(attrs: dict[str, Any]) -> dict[str, Any]:
     keys = (
@@ -882,10 +948,10 @@ def _bbox(raw: str | None) -> list[float] | None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="operation", required=True)
-    for operation in ("inspect", "statistics", "aggregate", "subset", "convert", "transform", "raster-index", "terrain", "visualize", "visualize-bundle"):
+    for operation in ("inspect", "statistics", "aggregate", "subset", "convert", "transform", "raster-index", "terrain", "visualize", "visualize-bundle", "resample-time", "regrid", "area-weighted", "anomaly-standardize", "export-cog"):
         command = subparsers.add_parser(operation)
         command.add_argument("input_path", type=Path)
-        if operation in {"statistics", "aggregate", "subset", "convert", "visualize", "visualize-bundle"}:
+        if operation in {"statistics", "aggregate", "subset", "convert", "visualize", "visualize-bundle", "resample-time", "regrid", "area-weighted", "anomaly-standardize", "export-cog"}:
             command.add_argument("--variable")
         if operation == "aggregate":
             command.add_argument("--method", required=True)
@@ -923,6 +989,16 @@ def build_parser() -> argparse.ArgumentParser:
         if operation == "visualize-bundle":
             command.add_argument("--output", type=Path, required=True)
             command.add_argument("--max-plots", type=int, default=4)
+        if operation == "resample-time":
+            command.add_argument("--output", type=Path, required=True); command.add_argument("--frequency", required=True); command.add_argument("--method", choices=("mean","sum","min","max"), default="mean")
+        if operation == "regrid":
+            command.add_argument("--output", type=Path, required=True); command.add_argument("--target-path", type=Path, required=True); command.add_argument("--method", choices=("nearest","linear"), default="linear")
+        if operation == "area-weighted":
+            command.add_argument("--method", choices=("mean","sum"), default="mean"); command.add_argument("--latitude-coordinate")
+        if operation == "anomaly-standardize":
+            command.add_argument("--output", type=Path, required=True); command.add_argument("--baseline-start", required=True); command.add_argument("--baseline-end", required=True); command.add_argument("--mode", choices=("absolute","percent","standardized"), default="absolute")
+        if operation == "export-cog":
+            command.add_argument("--output", type=Path, required=True); command.add_argument("--dimension-indices", default="{}")
     return parser
 
 
@@ -941,6 +1017,16 @@ def main() -> int:
             payload = subset_netcdf(args.input_path, args.output, args.variable, _bbox(args.bbox), args.time_start, args.time_end, _indices(args.dimension_indices))
         elif args.operation == "convert":
             payload = convert_netcdf_to_geotiff(args.input_path, args.output, args.variable, _indices(args.dimension_indices))
+        elif args.operation == "resample-time":
+            payload = netcdf_resample_time(args.input_path, args.output, args.variable, args.frequency, args.method)
+        elif args.operation == "regrid":
+            payload = netcdf_regrid(args.input_path, args.output, args.variable, args.target_path, args.method)
+        elif args.operation == "area-weighted":
+            payload = netcdf_area_weighted(args.input_path, args.variable, args.method, args.latitude_coordinate)
+        elif args.operation == "anomaly-standardize":
+            payload = netcdf_anomaly_standardize(args.input_path, args.output, args.variable, args.baseline_start, args.baseline_end, args.mode)
+        elif args.operation == "export-cog":
+            payload = netcdf_export_cog(args.input_path, args.output, args.variable, _indices(args.dimension_indices))
         elif args.operation == "transform":
             payload = transform_raster(args.input_path, args.output, args.target_crs, args.resolution, _bbox(args.bbox), args.resampling)
         elif args.operation == "raster-index":

@@ -17,6 +17,11 @@ DATA_OPERATIONS = {
     "scientific_terrain": "terrain",
     "scientific_visualize": "visualize",
     "scientific_netcdf_visualize": "visualize-bundle",
+    "scientific_netcdf_resample_time": "resample-time",
+    "scientific_netcdf_regrid": "regrid",
+    "scientific_netcdf_area_weighted": "area-weighted",
+    "scientific_netcdf_anomaly_standardize": "anomaly-standardize",
+    "scientific_netcdf_export_cog": "export-cog",
 }
 
 RECIPE_OPERATIONS = {

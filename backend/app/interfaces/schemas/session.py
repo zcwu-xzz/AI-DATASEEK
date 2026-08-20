@@ -123,6 +123,7 @@ class OpenJupyterRequest(BaseModel):
 
 class OpenJupyterResponse(BaseModel):
     notebook_path: str
+    embed_url: str
 
 
 class SessionCollaboratorUser(BaseModel):

@@ -34,6 +34,7 @@ export const TOOL_FUNCTION_MAP: {[key: string]: string} = {
   "browser_scroll_down": "Scrolling down",
   "browser_console_exec": "Executing JS code",
   "browser_console_view": "Viewing console output",
+  "jupyter_open": "Opening JupyterLab",
   
   // Search tools
   "info_search_web": "Searching web",
@@ -153,7 +154,8 @@ export const TOOL_NAME_MAP: {[key: string]: string} = {
   "message": "Message",
   "mcp": "MCP Tool",
   "skill": "Skill",
-  "scientific": "Scientific analysis"
+  "scientific": "Scientific analysis",
+  "jupyter": "JupyterLab",
 };
 
 import SearchIcon from '../components/icons/SearchIcon.vue';
@@ -161,7 +163,7 @@ import EditIcon from '../components/icons/EditIcon.vue';
 import BrowserIcon from '../components/icons/BrowserIcon.vue';
 import ShellIcon from '../components/icons/ShellIcon.vue';
 import InfoIcon from '../components/icons/InfoIcon.vue';
-import { Earth } from 'lucide-vue-next';
+import { Earth, NotebookTabs } from 'lucide-vue-next';
 
 /**
  * Tool icon mapping
@@ -174,7 +176,8 @@ export const TOOL_ICON_MAP: {[key: string]: any} = {
   "message": "",
   "mcp": SearchIcon,
   "skill": InfoIcon,
-  "scientific": Earth
+  "scientific": Earth,
+  "jupyter": NotebookTabs,
 };
 
 import ShellToolView from '@/components/toolViews/ShellToolView.vue';
@@ -183,6 +186,7 @@ import SearchToolView from '@/components/toolViews/SearchToolView.vue';
 import BrowserToolView from '@/components/toolViews/BrowserToolView.vue';
 import McpToolView from '@/components/toolViews/McpToolView.vue';
 import SkillToolView from '@/components/toolViews/SkillToolView.vue';
+import JupyterToolView from '@/components/toolViews/JupyterToolView.vue';
 
 /**
  * Mapping from tool names to components
@@ -193,5 +197,6 @@ export const TOOL_COMPONENT_MAP: {[key: string]: any} = {
   "search": SearchToolView,
   "browser": BrowserToolView,
   "mcp": McpToolView,
-  "skill": SkillToolView
+  "skill": SkillToolView,
+  "jupyter": JupyterToolView,
 };

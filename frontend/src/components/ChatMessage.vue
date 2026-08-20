@@ -480,18 +480,21 @@ async function handleMarkdownClick(event: MouseEvent) {
     jupyterButton.disabled = true;
     jupyterButton.textContent = '打开中...';
     try {
-      await openJupyterNotebook(props.sessionId, code, 'python');
+      const notebook = await openJupyterNotebook(props.sessionId, code, 'python');
       const tool: ToolContent = {
         tool_call_id: `jupyter-${Date.now()}`,
-        name: 'browser_navigate',
-        function: 'JupyterLab',
+        name: 'jupyter',
+        function: 'jupyter_open',
         args: { url: 'JupyterLab' },
-        content: { screenshot: null },
+        content: { embed_url: notebook.embed_url },
         status: 'called',
         timestamp: Math.floor(Date.now() / 1000),
       };
       emit('jupyterOpened', tool);
-      jupyterButton.textContent = '已打开';
+      // Keep the action reusable after the computer panel is minimized.
+      // The backend de-duplicates the last identical cell.
+      jupyterButton.disabled = false;
+      jupyterButton.textContent = 'Jupyter';
     } catch (error) {
       console.error('Failed to open Jupyter notebook', error);
       jupyterButton.disabled = false;

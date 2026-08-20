@@ -2,12 +2,16 @@
   <div
     ref="vncContainer"
     class="vnc-container"
-    style="display: flex; width: 100%; height: 100%; overflow: auto; background: rgb(40, 40, 40);">
+    style="position: relative; display: flex; width: 100%; height: 100%; overflow: auto; background: rgb(40, 40, 40);">
+    <div v-if="connectionState !== 'connected'" class="vnc-status">
+      <span>{{ connectionState === 'error' ? '电脑画面连接失败' : '正在连接电脑画面...' }}</span>
+      <button v-if="connectionState === 'error'" type="button" @click="initVNCConnection">重试</button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount, watch } from 'vue';
+import { ref, onBeforeUnmount, watch, nextTick } from 'vue';
 import { getVNCUrl } from '@/api/agent';
 // @ts-ignore
 import RFB from '@novnc/novnc';
@@ -26,9 +30,12 @@ const emit = defineEmits<{
 
 const vncContainer = ref<HTMLDivElement | null>(null);
 let rfb: RFB | null = null;
+const connectionState = ref<'connecting' | 'connected' | 'error'>('connecting');
 
 const initVNCConnection = async () => {
   if (!vncContainer.value || !props.enabled) return;
+
+  connectionState.value = 'connecting';
 
   // Disconnect existing connection
   if (rfb) {
@@ -57,11 +64,13 @@ const initVNCConnection = async () => {
 
     rfb.addEventListener('connect', () => {
       console.log('VNC connection successful');
+      connectionState.value = 'connected';
       emit('connected');
     });
 
     rfb.addEventListener('disconnect', (e: any) => {
       console.log('VNC connection disconnected', e);
+      if (props.enabled) connectionState.value = 'error';
       emit('disconnected', e);
     });
 
@@ -71,6 +80,7 @@ const initVNCConnection = async () => {
     });
   } catch (error) {
     console.error('Failed to initialize VNC connection:', error);
+    connectionState.value = 'error';
   }
 };
 
@@ -93,7 +103,7 @@ watch([() => props.sessionId, () => props.enabled], () => {
 // Watch for container availability
 watch(vncContainer, () => {
   if (vncContainer.value && props.enabled) {
-    initVNCConnection();
+    nextTick(initVNCConnection);
   }
 });
 
@@ -109,4 +119,25 @@ defineExpose({
 </script>
 
 <style scoped>
+.vnc-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #6b7280;
+  background: #fff;
+  z-index: 2;
+}
+
+.vnc-status button {
+  padding: 5px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
 </style>

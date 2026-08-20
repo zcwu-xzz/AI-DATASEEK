@@ -249,8 +249,50 @@ def test_coordinate_inspect_result_does_not_finish_non_coordinate_requests():
     ]) is None
 
 
+def test_netcdf_operator_result_finishes_without_followup_shell_or_model_call():
+    agent = object.__new__(ExecutionAgent)
+    agent._current_plan = Plan(language="zh")
+    result = ToolMessage(
+        tool_call_id="tool-1",
+        name="netcdf_climatology",
+        content="completed",
+    )
+    result.artifact = ToolResult(
+        success=True,
+        data={
+            "status": "completed",
+            "returncode": 0,
+            "output": json.dumps({
+                "success": True,
+                "operation": "netcdf_climatology",
+                "summary": {
+                    "variable": "rain",
+                    "frequency": "month",
+                    "groups": [1, 2],
+                    "shape": [2, 1, 1],
+                    "minimum": 1,
+                    "mean": 2,
+                    "maximum": 3,
+                },
+                "artifacts": [
+                    {"path": "/home/ubuntu/output/climate.nc"},
+                    {"path": "/home/ubuntu/output/climate.nc"},
+                ],
+                "warnings": [],
+            }),
+        },
+    )
+
+    completion = agent._completion_from_tool_batch([result])
+    assert completion is not None
+    parsed = ExecutionResult.model_validate_json(completion)
+    assert parsed.success is True
+    assert "气候态计算已完成" in parsed.result
+    assert parsed.attachments == ["/home/ubuntu/output/climate.nc"]
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize("placeholder", ["placeholder", "TBD.", "待补充", "暂无结果"])
+@pytest.mark.parametrize("placeholder", ["placeholder", "placeholder-not-used", "TBD.", "待补充", "暂无结果"])
 async def test_execution_result_rejects_standalone_placeholder_text(placeholder):
     agent = object.__new__(ExecutionAgent)
 

@@ -60,8 +60,8 @@ export async function openJupyterNotebook(
   sessionId: string,
   code: string,
   language = 'python',
-): Promise<{ notebook_path: string }> {
-  const response = await apiClient.post<ApiResponse<{ notebook_path: string }>>(
+): Promise<{ notebook_path: string; embed_url: string }> {
+  const response = await apiClient.post<ApiResponse<{ notebook_path: string; embed_url: string }>>(
     `/sessions/${encodeURIComponent(sessionId)}/jupyter`,
     { code, language },
   );

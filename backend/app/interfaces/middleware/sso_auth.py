@@ -17,8 +17,10 @@ from app.interfaces.dependencies import get_token_service
 
 
 SSO_LOGIN_URL = "https://space.4fair.cn"
+SSO_TOKEN_COOKIE = "dataseek_sso_token"
 BROWSER_REQUEST_HEADER = "X-DataSeek-Browser-Request"
 SIGNED_FILE_PATH = re.compile(r"^/api/v1/files/[^/]+$")
+JUPYTER_PROXY_PATH = re.compile(r"^/api/v1/sessions/[^/]+/jupyter-proxy(?:/.*)?$")
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,12 @@ class SSOAuthorizationMiddleware(BaseHTTPMiddleware):
         # previews use short-lived HMAC URLs, so allow only an exact file GET
         # after verifying its signature and expiry.
         if is_valid_signed_file_request(request):
+            return await call_next(request)
+
+        # Jupyter iframe assets and kernel requests cannot attach the DataSeek
+        # bearer header. The proxy route validates its own short-lived,
+        # task-scoped ticket on every request.
+        if JUPYTER_PROXY_PATH.fullmatch(request.url.path):
             return await call_next(request)
 
         token = request.headers.get("Authorization", "").strip()

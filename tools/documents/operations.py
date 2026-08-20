@@ -148,6 +148,35 @@ def pdf_evidence(a: dict[str,Any]) -> dict[str,Any]:
     return response("pdf_find_evidence",{"hit_count":len(hits),"queries":queries},evidence=hits,warnings=[] if hits else ["no matching extractable text was found"])
 
 
+def pdf_ocr(a: dict[str,Any]) -> dict[str,Any]:
+    import pymupdf as fitz
+    languages=a.get("languages","chi_sim+eng")
+    if not re.fullmatch(r"[A-Za-z0-9_+-]+",languages): raise ValueError("invalid OCR language selection")
+    limit=a.get("max_chars",200000); maximum=a.get("max_pages",10); dpi=a.get("dpi",200); pages=[]; used=0; warnings=[]
+    with fitz.open(a["input_path"]) as doc:
+        indices=select_pages(doc,a.get("pages"),maximum)
+        for index in indices:
+            pix=doc[index].get_pixmap(matrix=fitz.Matrix(dpi/72,dpi/72),colorspace=fitz.csRGB,alpha=False)
+            completed=subprocess.run(
+                ["tesseract","stdin","stdout","-l",languages,"--dpi",str(dpi),"--psm","6"],
+                input=pix.tobytes("png"),capture_output=True,timeout=90,
+            )
+            if completed.returncode:
+                raise ValueError(f"OCR failed on page {index+1}: {completed.stderr.decode('utf-8',errors='replace')[:500]}")
+            text=completed.stdout.decode("utf-8",errors="replace").strip(); remaining=max(0,limit-used); text=text[:remaining]
+            pages.append({"page":index+1,"text":text,"characters":len(text)}); used+=len(text)
+            if used>=limit: warnings.append(f"OCR text truncated at {limit} characters"); break
+    artifacts=[]
+    if a.get("output_path"):
+        path=output_path(a["output_path"])
+        if path.suffix.lower()==".txt": path.write_text("\n\n".join(f"[Page {p['page']}]\n{p['text']}" for p in pages),encoding="utf-8"); mime="text/plain"
+        elif path.suffix.lower()==".json": path.write_text(json.dumps(pages,ensure_ascii=False,indent=2),encoding="utf-8"); mime="application/json"
+        else: raise ValueError("PDF OCR output must be .txt or .json")
+        artifacts=[artifact(path,mime)]
+    if not any(page["text"] for page in pages): warnings.append("OCR produced no text on the selected pages")
+    return response("pdf_ocr_text",{"pages_ocrd":len(pages),"characters":used,"languages":languages,"pages":pages},artifacts=artifacts,warnings=warnings)
+
+
 def docx_structure(a: dict[str,Any]) -> dict[str,Any]:
     from docx import Document
     doc=Document(a["input_path"]); limit=a.get("max_chars",200000); used=0; blocks=[]; warnings=[]
@@ -208,7 +237,7 @@ def visual_validate(a: dict[str,Any]) -> dict[str,Any]:
     return response("document_visual_validate",summary,warnings=warnings)
 
 
-FUNCTIONS={"document_inspect":inspect_document,"pdf_extract_text":pdf_text,"pdf_extract_tables":pdf_tables,"pdf_render_pages":pdf_render,"pdf_find_evidence":pdf_evidence,"docx_extract_structure":docx_structure,"docx_extract_tables":docx_tables,"document_compare":compare_documents,"document_visual_validate":visual_validate}
+FUNCTIONS={"document_inspect":inspect_document,"pdf_extract_text":pdf_text,"pdf_extract_tables":pdf_tables,"pdf_render_pages":pdf_render,"pdf_find_evidence":pdf_evidence,"pdf_ocr_text":pdf_ocr,"docx_extract_structure":docx_structure,"docx_extract_tables":docx_tables,"document_compare":compare_documents,"document_visual_validate":visual_validate}
 
 
 def main() -> int:
