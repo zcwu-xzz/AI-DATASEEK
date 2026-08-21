@@ -129,6 +129,64 @@
               暂无可展示的文件名
             </div>
           </section>
+
+          <section>
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-xs font-semibold">数据产品</h3>
+              <span class="text-[10px] text-[var(--text-tertiary)]">{{ dataProducts.length }} 个</span>
+            </div>
+            <div v-if="dataProducts.length" class="mt-2.5 overflow-hidden rounded-lg border border-[var(--border-main)] bg-[var(--background-gray-main)]">
+              <div v-for="product in dataProducts" :key="product.product_id" class="border-b border-[var(--border-main)] last:border-b-0">
+                <button type="button" class="flex w-full min-w-0 items-center gap-2 px-2 py-2 text-left hover:bg-[var(--fill-tsp-white-light)]" :aria-expanded="expandedProductIds.has(product.product_id)" @click="toggleProduct(product.product_id)">
+                  <ChevronDown v-if="expandedProductIds.has(product.product_id)" class="size-3.5 shrink-0" />
+                  <ChevronRight v-else class="size-3.5 shrink-0" />
+                  <PackageOpen class="size-4 shrink-0 text-[#2b7659]" />
+                  <span class="min-w-0 flex-1 truncate text-xs font-medium" :title="product.name">{{ product.name }}</span>
+                  <span class="text-[10px] text-[var(--text-tertiary)]">v{{ product.version }}</span>
+                </button>
+                <div v-if="expandedProductIds.has(product.product_id)" class="border-t border-[var(--border-main)] bg-[var(--background-menu-white)]">
+                  <div class="px-8 py-2 text-[10px] leading-4 text-[var(--text-tertiary)]">
+                    <template v-if="editingProductId === product.product_id">
+                      <input v-model="editingProductName" class="mb-1 w-full rounded border border-[var(--border-main)] bg-transparent px-2 py-1 text-xs text-[var(--text-primary)]" maxlength="200" />
+                      <textarea v-model="editingProductDescription" class="w-full resize-y rounded border border-[var(--border-main)] bg-transparent px-2 py-1 text-xs text-[var(--text-primary)]" rows="2" maxlength="4000" />
+                      <input v-model="editingProductGenerationMethod" class="mb-1 w-full rounded border border-[var(--border-main)] bg-transparent px-2 py-1 text-xs text-[var(--text-primary)]" placeholder="生成方式" maxlength="200" />
+                      <input v-model="editingProductCreatedBy" class="mb-1 w-full rounded border border-[var(--border-main)] bg-transparent px-2 py-1 text-xs text-[var(--text-primary)]" placeholder="创建用户" maxlength="200" />
+                      <div class="mt-2 border-t border-[var(--border-main)] pt-2"><div class="mb-1 font-medium">目录与文件</div><div v-for="file in editingProductFiles" :key="file.file_id" class="mb-1 flex items-center gap-1"><button type="button" class="text-red-600" title="从数据产品移除（源文件保留）" @click="removeEditingProductFile(file.file_id)">×</button><span class="min-w-0 flex-1 truncate" :title="file.relative_path">{{ file.filename }}</span><input v-model="editingProductPaths[file.file_id]" class="w-32 rounded border border-[var(--border-main)] bg-transparent px-1 py-0.5" placeholder="目录/文件名" /></div><div class="mt-1 flex gap-1"><input v-model="newProductDirectory" class="min-w-0 flex-1 rounded border border-[var(--border-main)] bg-transparent px-1 py-0.5" placeholder="新建目录，如 charts/2026" /><button type="button" class="rounded bg-[var(--background-gray-main)] px-2 py-0.5" @click="addProductDirectory">新建目录</button></div><div v-if="editingProductDirectories.length" class="mt-1">目录：{{ editingProductDirectories.join('、') }}</div></div>
+                      <div class="mt-1 flex gap-1"><button class="rounded bg-[#2b7659] px-2 py-1 text-white" @click="saveProductMetadata(product)">保存</button><button class="rounded px-2 py-1 hover:bg-[var(--fill-tsp-white-light)]" @click="editingProductId = null">取消</button></div>
+                    </template>
+                    <template v-else>
+                      <p v-if="product.description">{{ product.description }}</p>
+                      <p>生成方式：{{ product.generation_method === 'agent_tool' ? 'Agent Tool' : product.generation_method }}</p>
+                      <p>创建用户：{{ product.created_by }}</p>
+                      <div class="mt-1 flex gap-1">
+                        <button class="flex items-center gap-1 rounded px-1.5 py-1 hover:bg-[var(--fill-tsp-white-light)]" title="编辑产品信息" @click="beginEditProduct(product)"><Pencil class="size-3" />编辑</button>
+                        <button class="flex items-center gap-1 rounded px-1.5 py-1 hover:bg-[var(--fill-tsp-white-light)]" title="下载全部产品文件" @click="downloadProductBundle(product)"><Download class="size-3" />下载</button>
+                        <button class="flex items-center gap-1 rounded px-1.5 py-1 text-red-600 hover:bg-red-50" title="删除数据产品" @click="removeProduct(product)"><Trash2 class="size-3" />删除</button>
+                      </div>
+                    </template>
+                  </div>
+                  <div v-for="row in productFileRows(product)" :key="row.kind + ':' + row.path" class="flex min-w-0 items-center gap-1.5 border-t border-[var(--border-main)] py-1.5 pr-2" :style="{ paddingLeft: (32 + row.depth * 14) + 'px' }">
+                    <button v-if="row.kind === 'directory'" class="flex size-5 shrink-0 items-center justify-center" @click="toggleProductDirectory(product.product_id, row.path)">
+                      <ChevronDown v-if="expandedProductDirectories.has(product.product_id + ':' + row.path)" class="size-3" /><ChevronRight v-else class="size-3" />
+                    </button>
+                    <span v-else class="size-5 shrink-0" />
+                    <Folder v-if="row.kind === 'directory'" class="size-3.5 shrink-0 text-[#2b7659]" />
+                    <FileText v-else class="size-3.5 shrink-0 text-[#2b7659]" />
+                    <span class="min-w-0 flex-1 truncate text-[11px]" :title="row.path">{{ row.name }}</span>
+                    <span v-if="row.file?.is_primary" class="shrink-0 text-[9px] text-[#2b7659]">主文件</span>
+                    <template v-if="row.file">
+                      <button class="flex size-5 shrink-0 items-center justify-center rounded hover:bg-[var(--fill-tsp-white-light)]" title="编辑文件目录" aria-label="编辑文件目录" @click="openProductFileMove(product, row.file)"><Pencil class="size-3" /></button>
+                      <button class="flex size-5 shrink-0 items-center justify-center rounded hover:bg-[var(--fill-tsp-white-light)]" title="预览产品文件" aria-label="预览产品文件" @click="previewProductFile(row.file)"><Eye class="size-3" /></button>
+                      <button class="flex size-5 shrink-0 items-center justify-center rounded hover:bg-[var(--fill-tsp-white-light)]" title="下载产品文件" aria-label="下载产品文件" @click="downloadProductFile(row.file)"><Download class="size-3" /></button>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="mt-2.5 rounded-lg border border-dashed border-[var(--border-main)] px-3 py-5 text-center text-xs text-[var(--text-tertiary)]">
+              暂无已保存的数据产品
+            </div>
+          </section>
         </div>
 
         <div v-else class="flex h-48 flex-col items-center justify-center gap-3 text-center">
@@ -285,9 +343,11 @@
                   :hide-header="isConsecutiveAssistant(messages, index)"
                   :show-assistant-actions="!isLoading && isLatestAssistantMessage(messages, index)"
                   :task-summary-expanded="isTaskSummaryExpanded(message)"
+                  :show-product-button="!isLoading && isLatestAssistantMessage(messages, index)"
                   @toolClick="handleToolClick"
                   @jupyterOpened="handleJupyterOpened"
                   @taskSummaryToggle="toggleTaskSummary(message)"
+                  @showProduct="productDialogVisible = true"
                 />
               </div>
               <div
@@ -345,6 +405,15 @@
                 {{ completionAdvice.skill_reason }}
               </div>
             </div>
+            <button
+              v-if="showNcViewSuggestion"
+              type="button"
+              class="mt-4 flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--border-main)] bg-[var(--background-menu-white)] px-4 py-3 text-left text-sm transition-colors hover:border-[#6b927f] hover:bg-[#f6faf8] dark:hover:bg-[#27342f]"
+              @click="ncViewVisible = true"
+            >
+              <span>建议您使用NCView进行可视化分析</span>
+              <ChevronRight class="size-4 shrink-0 text-[var(--icon-tertiary)]" />
+            </button>
             <div v-if="isLoading && !hasRunningStep" class="mt-3 flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
               <LoaderCircle class="size-4 animate-spin" />
               <span>{{ loadingStatus }}</span>
@@ -376,6 +445,7 @@
         </div>
       </div>
     </main>
+    <VersionBadge />
     <ToolPanel
       ref="toolPanel"
       :session-id="sessionId || undefined"
@@ -386,22 +456,47 @@
     <FilePanel resizable :reserved-width="catalogCollapsed ? 56 : 304" />
   </div>
   <SessionFileList :session-id="sessionId || undefined" />
+  <DataProductDialog v-if="sessionId && selectedDatasetId" :visible="productDialogVisible" :session-id="sessionId" :dataset-id="selectedDatasetId" @close="productDialogVisible = false" @saved="loadDataProducts" />
+  <DataProductFileMoveDialog :visible="productFileMoveVisible" :product="movingProduct" :file="movingProductFile" :saving="productFileMoveSaving" @close="closeProductFileMove" @move="moveProductFile" />
+  <Teleport to="body">
+    <div v-if="ncViewVisible && dataset?.ncViewUrl" class="fixed inset-0 z-[1200] flex items-center justify-center bg-black/55 p-3 sm:p-6" @click.self="ncViewVisible = false">
+      <section class="flex h-[92vh] w-full max-w-[1600px] flex-col overflow-hidden rounded-lg border border-[var(--border-main)] bg-[var(--background-menu-white)] shadow-2xl">
+        <header class="flex h-14 shrink-0 items-center justify-between border-b border-[var(--border-main)] px-4">
+          <h2 class="text-sm font-semibold">NCView 可视化分析</h2>
+          <button type="button" class="icon-button" title="关闭" aria-label="关闭 NCView" @click="ncViewVisible = false">
+            <X class="size-4" />
+          </button>
+        </header>
+        <iframe
+          :src="dataset.ncViewUrl"
+          title="NCView 可视化分析"
+          class="min-h-0 w-full flex-1 border-0 bg-white"
+          sandbox="allow-downloads allow-forms allow-modals allow-popups allow-same-origin allow-scripts"
+          referrerpolicy="no-referrer"
+        />
+      </section>
+    </div>
+  </Teleport>
   <SettingsDialog />
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { Check, ChevronDown, ChevronRight, CircleAlert, Clock3, Copy, Database, FileText, Folder, FolderOpen, History, Image as ImageIcon, LoaderCircle, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw } from 'lucide-vue-next';
+import { Check, ChevronDown, ChevronRight, CircleAlert, Clock3, Copy, Database, Download, Eye, FileText, Folder, FolderOpen, History, Image as ImageIcon, LoaderCircle, PackageOpen, PanelLeftClose, PanelLeftOpen, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
 import ChatBox from '@/components/ChatBox.vue';
 import ChatMessage from '@/components/ChatMessage.vue';
 import FilePanel from '@/components/FilePanel.vue';
 import SessionFileList from '@/components/SessionFileList.vue';
+import DataProductDialog from '@/components/DataProductDialog.vue';
+import DataProductFileMoveDialog from '@/components/DataProductFileMoveDialog.vue';
+import VersionBadge from '@/components/VersionBadge.vue';
 import SettingsDialog from '@/components/settings/SettingsDialog.vue';
 import ToolPanel from '@/components/ToolPanel.vue';
 import { createSession, getSession, chatWithSession, stopSession } from '@/api/agent';
 import { API_CONFIG } from '@/api/client';
-import { generateDatasetSuggestedQuestions, getDataCenterDataset, listDatasetChatSessions, type DataCenterDataset, type DataCenterDatasetFile, type DatasetChatSession } from '@/api/dataset';
+import { deleteDatasetDataProduct, downloadDatasetDataProduct, generateDatasetSuggestedQuestions, getDataCenterDataset, listDatasetChatSessions, listDatasetDataProducts, updateDatasetDataProduct, type DataCenterDataset, type DataCenterDatasetFile, type DataProduct, type DataProductFile, type DatasetChatSession } from '@/api/dataset';
+import { createFileSignedUrl } from '@/api/file';
 import type { FileInfo } from '@/api/file';
 import { getSkillPreferences } from '@/api/skill';
 import { useAgentProfile } from '@/composables/useAgentProfile';
@@ -412,7 +507,7 @@ import { isPlaceholderAssistantMessage } from '@/utils/datasetResultPresentation
 import { copyToClipboard } from '@/utils/dom';
 import { eventBus } from '@/utils/eventBus';
 import { showErrorToast, showSuccessToast } from '@/utils/toast';
-import { failRunningSteps, findCurrentTurnRunningStep, findCurrentTurnStep, insertTaskExecutionSummary, isLatestAssistantMessage } from '@/utils/chatTimeline';
+import { completeRunningSteps, failRunningSteps, findCurrentTurnRunningStep, findCurrentTurnStep, insertTaskExecutionSummary, isLatestAssistantMessage } from '@/utils/chatTimeline';
 import { isConsecutiveAssistant, type AttachmentsContent, type Message, type MessageContent, type StepContent, type ToolContent } from '@/types/message';
 import type { AgentSSEEvent, CompletionAdviceData, DoneEventData, ErrorEventData, MessageEventData, PlanEventData, StepEventData, TitleEventData, ToolEventData } from '@/types/event';
 import { SessionStatus } from '@/types/response';
@@ -423,6 +518,24 @@ const route = useRoute();
 const { selectedProfileId, refreshProfiles } = useAgentProfile();
 const { showFilePanel } = useFilePanel();
 const dataset = ref<DataCenterDataset>();
+const dataProducts = ref<DataProduct[]>([]);
+const productDialogVisible = ref(false);
+const productFileMoveVisible = ref(false);
+const productFileMoveSaving = ref(false);
+const movingProduct = ref<DataProduct>();
+const movingProductFile = ref<DataProductFile>();
+const ncViewVisible = ref(false);
+const expandedProductIds = ref(new Set<string>());
+const expandedProductDirectories = ref(new Set<string>());
+const editingProductId = ref<string | null>(null);
+const editingProductName = ref('');
+const editingProductDescription = ref('');
+const editingProductGenerationMethod = ref('');
+const editingProductCreatedBy = ref('');
+const editingProductFiles = ref<DataProductFile[]>([]);
+const editingProductPaths = ref<Record<string, string>>({});
+const editingProductDirectories = ref<string[]>([]);
+const newProductDirectory = ref('');
 const selectedDatasetId = ref('');
 const datasetSummaryRef = ref<HTMLElement | null>(null);
 const datasetSummaryExpanded = ref(false);
@@ -468,6 +581,127 @@ let timelineResizeObserver: ResizeObserver | null = null;
 let datasetSummaryResizeObserver: ResizeObserver | null = null;
 let desktopCatalogMediaQuery: MediaQueryList | null = null;
 let datasetFileCopyTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function loadDataProducts() {
+  if (!selectedDatasetId.value) return;
+  dataProducts.value = await listDatasetDataProducts(selectedDatasetId.value).catch(() => []);
+}
+
+function toggleProduct(productId: string) {
+  const next = new Set(expandedProductIds.value);
+  next.has(productId) ? next.delete(productId) : next.add(productId);
+  expandedProductIds.value = next;
+}
+
+type ProductTreeRow = { kind: 'directory' | 'file'; name: string; path: string; depth: number; file?: DataProductFile };
+
+function productFileRows(product: DataProduct): ProductTreeRow[] {
+  const directories = new Map<string, Set<string>>();
+  const files = new Map<string, DataProductFile[]>();
+  directories.set('', new Set());
+  for (const directory of product.directories || []) {
+    const parts = directory.replace(/\\/g, '/').split('/').filter(Boolean);
+    let parent = '';
+    for (const part of parts) {
+      const path = parent ? parent + '/' + part : part;
+      if (!directories.has(path)) directories.set(path, new Set());
+      directories.get(parent)?.add(path);
+      parent = path;
+    }
+  }
+  for (const file of product.files) {
+    const parts = file.relative_path.replace(/\\/g, '/').split('/').filter(Boolean);
+    let parent = '';
+    parts.slice(0, -1).forEach(part => {
+      const path = parent ? parent + '/' + part : part;
+      if (!directories.has(path)) directories.set(path, new Set());
+      directories.get(parent)?.add(path);
+      parent = path;
+    });
+    const list = files.get(parent) || [];
+    list.push(file);
+    files.set(parent, list);
+  }
+  const rows: ProductTreeRow[] = [];
+  const visit = (parent: string, depth: number) => {
+    [...(directories.get(parent) || [])].sort().forEach(path => {
+      rows.push({ kind: 'directory', name: path.split('/').pop() || path, path, depth });
+      if (expandedProductDirectories.value.has(product.product_id + ':' + path)) visit(path, depth + 1);
+    });
+    (files.get(parent) || []).sort((a, b) => a.filename.localeCompare(b.filename)).forEach(file => rows.push({ kind: 'file', name: file.filename, path: file.relative_path, depth, file }));
+  };
+  visit('', 0);
+  return rows;
+}
+
+function toggleProductDirectory(productId: string, path: string) {
+  const key = productId + ':' + path; const next = new Set(expandedProductDirectories.value);
+  next.has(key) ? next.delete(key) : next.add(key); expandedProductDirectories.value = next;
+}
+
+async function downloadProductFile(file: DataProductFile) {
+  const signed = await createFileSignedUrl(file.file_id);
+  const url = /^https?:\/\//i.test(signed.signed_url) ? signed.signed_url : API_CONFIG.host + signed.signed_url;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function previewProductFile(file: DataProductFile) {
+  showFilePanel({
+    file_id: file.file_id,
+    filename: file.filename,
+    relative_path: file.relative_path,
+    content_type: file.content_type || undefined,
+    size: file.size,
+    upload_date: new Date().toISOString(),
+  });
+}
+
+function openProductFileMove(product: DataProduct, file: DataProductFile) {
+  movingProduct.value = product;
+  movingProductFile.value = file;
+  productFileMoveVisible.value = true;
+}
+
+function closeProductFileMove() {
+  if (productFileMoveSaving.value) return;
+  productFileMoveVisible.value = false;
+}
+
+async function moveProductFile(directory: string) {
+  const product = movingProduct.value; const file = movingProductFile.value;
+  if (!product || !file) return;
+  productFileMoveSaving.value = true;
+  try {
+    const relativePath = directory ? `${directory}/${file.filename}` : file.filename;
+    const files = product.files.map(item => item.file_id === file.file_id ? { ...item, relative_path: relativePath } : { ...item });
+    await updateDatasetDataProduct(product.dataset_id, product.product_id, { name: product.name, description: product.description, generation_method: product.generation_method, created_by: product.created_by, directories: product.directories || [], files });
+    await loadDataProducts(); productFileMoveVisible.value = false; showSuccessToast('产品文件目录已更新');
+  } catch { showErrorToast('移动产品文件失败'); } finally { productFileMoveSaving.value = false; }
+}
+
+function beginEditProduct(product: DataProduct) {
+  editingProductId.value = product.product_id; editingProductName.value = product.name; editingProductDescription.value = product.description; editingProductGenerationMethod.value = product.generation_method; editingProductCreatedBy.value = product.created_by; editingProductFiles.value = product.files.map(file => ({ ...file })); editingProductPaths.value = Object.fromEntries(product.files.map(file => [file.file_id, file.relative_path])); editingProductDirectories.value = [...(product.directories || [])];
+}
+
+function removeEditingProductFile(fileId: string) { editingProductFiles.value = editingProductFiles.value.filter(file => file.file_id !== fileId); }
+function addProductDirectory() { const value = newProductDirectory.value.replace(/\\/g, '/').trim().replace(/^\/+|\/+$/g, ''); if (value && !value.split('/').includes('..') && !editingProductDirectories.value.includes(value)) editingProductDirectories.value.push(value); newProductDirectory.value = ''; }
+
+async function saveProductMetadata(product: DataProduct) {
+  const files = editingProductFiles.value.map(file => ({ ...file, relative_path: editingProductPaths.value[file.file_id] || file.relative_path }));
+  await updateDatasetDataProduct(product.dataset_id, product.product_id, { name: editingProductName.value, description: editingProductDescription.value, generation_method: editingProductGenerationMethod.value, created_by: editingProductCreatedBy.value, directories: editingProductDirectories.value, files });
+  editingProductId.value = null; await loadDataProducts(); showSuccessToast('数据产品信息已更新');
+}
+
+async function removeProduct(product: DataProduct) {
+  if (!window.confirm('确认删除该数据产品及其独立产品文件吗？源任务成果物不会被删除。')) return;
+  await deleteDatasetDataProduct(product.dataset_id, product.product_id); await loadDataProducts(); showSuccessToast('数据产品已删除');
+}
+
+async function downloadProductBundle(product: DataProduct) {
+  const blob = await downloadDatasetDataProduct(product.dataset_id, product.product_id);
+  const url = URL.createObjectURL(blob); const link = document.createElement('a');
+  link.href = url; link.download = product.name + '-v' + product.version + '.zip'; link.click(); URL.revokeObjectURL(url);
+}
 
 const TIMELINE_BOTTOM_THRESHOLD = 120;
 
@@ -745,6 +979,7 @@ function handleEvent(event: AgentSSEEvent) {
     taskStartedAtMs.value = undefined;
   } else if (event.event === 'done') {
     isLoading.value = false;
+    completeRunningSteps(messages.value, event.data.timestamp);
     const elapsedMs = taskStartedAtMs.value === undefined
       ? undefined
       : performance.now() - taskStartedAtMs.value;
@@ -867,6 +1102,12 @@ function shouldShowStep(index: number) {
 }
 
 const hasRunningStep = computed(() => Boolean(findCurrentTurnRunningStep(messages.value)));
+const showNcViewSuggestion = computed(() => Boolean(
+  dataset.value?.ncViewUrl
+  && !isLoading.value
+  && messages.value.some((message) => message.type === 'assistant'
+    && !isPlaceholderAssistantMessage((message.content as MessageContent).content)),
+));
 
 function isTaskSummaryExpanded(message: Message) {
   return message.type === 'task-summary' && expandedTaskSummaries.value.has(message.content.timestamp);
@@ -1073,6 +1314,7 @@ onMounted(async () => {
   try {
     dataset.value = await getDataCenterDataset(routeDatasetId);
     selectedDatasetId.value = dataset.value.dataset_id;
+    await loadDataProducts();
     void loadSuggestedQuestions();
   } catch (error: any) {
     showErrorToast(error?.message || '无法读取数据集');

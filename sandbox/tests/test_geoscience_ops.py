@@ -20,6 +20,11 @@ from scripts.geoscience_ops import (
     vector_inspect,
     vector_visualize,
     zonal_statistics,
+    raster_calculator,
+    raster_clip_by_vector,
+    raster_reclassify,
+    vector_schema_profile,
+    vector_topology_validate,
 )
 
 
@@ -83,3 +88,20 @@ def test_grid_alignment_change_detection_and_transect(tmp_path, monkeypatch):
     assert changed_result["mean_change"] == 2.0
     profile = transect_profile(Namespace(input_path=str(before), points="[[100.5,12.5],[103.5,10.5]]", samples=4, band=1))
     assert len(profile["values"]) == 4
+
+
+def test_vector_profile_topology_and_raster_product_operations(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_DATASEEK_OUTPUT_ROOT", str(tmp_path))
+    first, second = tmp_path / "first.tif", tmp_path / "second.tif"
+    vector = tmp_path / "zone.geojson"
+    _raster(first); _raster(second, 10)
+    gpd.GeoDataFrame({"group": ["a"], "value": [2]}, geometry=[box(100, 11, 102, 13)], crs="EPSG:4326").to_file(vector, driver="GeoJSON")
+
+    assert vector_schema_profile(Namespace(input_path=str(vector), max_categories=10))["fields"]["group"]["unique_count"] == 1
+    assert vector_topology_validate(Namespace(input_path=str(vector)))["valid"] is True
+    clipped = raster_clip_by_vector(Namespace(input_path=str(first), vector_path=str(vector), output_path=str(tmp_path / "clipped.tif"), all_touched=False))
+    assert clipped["shape"] == [1, 2, 2]
+    calculated = raster_calculator(Namespace(input_paths=[str(first), str(second)], output_path=str(tmp_path / "sum.tif"), operation="add", band=1))
+    assert calculated["success"] is True
+    classified = raster_reclassify(Namespace(input_path=str(first), output_path=str(tmp_path / "classes.tif"), rules='[{"min":0,"max":6,"value":1},{"min":6,"max":20,"value":2}]', band=1, default=0, nodata=-9999))
+    assert classified["classes"] == [1, 2]

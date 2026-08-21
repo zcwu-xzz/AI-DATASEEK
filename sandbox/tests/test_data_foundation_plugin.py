@@ -96,3 +96,23 @@ def test_netcdf_time_units_slices_climatology_and_missing_values(tmp_path, monke
     assert climate["summary"]["groups"] == [1, 2, 4, 5]
     quality = OPERATIONS.missing_gap_detect(str(source), "temperature", None)
     assert quality["summary"]["missing_values"] == 1
+
+
+def test_netcdf_concat_merge_dimension_and_encoding(tmp_path, monkeypatch):
+    output = tmp_path / "output"; output.mkdir(); monkeypatch.setenv("AI_DATASEEK_OUTPUT_ROOT", str(output))
+    first, second, humidity = tmp_path / "a.nc", tmp_path / "b.nc", tmp_path / "humidity.nc"
+    coords = {"latitude": [30.0, 31.0], "longitude": [100.0, 101.0]}
+    xr.Dataset({"temperature": (("time", "longitude", "latitude"), np.ones((1, 2, 2), dtype="float32"))}, coords={"time": [np.datetime64("2020-01-01")], **coords}).to_netcdf(first)
+    xr.Dataset({"temperature": (("time", "longitude", "latitude"), np.ones((1, 2, 2), dtype="float32") * 2)}, coords={"time": [np.datetime64("2020-02-01")], **coords}).to_netcdf(second)
+    xr.Dataset({"humidity": (("time", "latitude", "longitude"), np.ones((1, 2, 2), dtype="float32"))}, coords={"time": [np.datetime64("2020-01-01")], **coords}).to_netcdf(humidity)
+
+    concatenated = OPERATIONS.multi_file_concat([str(first), str(second)], "time", "temperature", str(output / "concat.nc"))
+    assert concatenated["summary"]["sizes"]["time"] == 2
+    merged = OPERATIONS.multi_file_merge([str(first), str(humidity)], str(output / "merged.nc"))
+    assert set(merged["summary"]["variables"]) == {"temperature", "humidity"}
+    normalized = OPERATIONS.dimension_normalize(str(first), "temperature", str(output / "normalized.nc"))
+    assert normalized["success"] is True
+    with xr.open_dataset(output / "normalized.nc") as ds:
+        assert ds.temperature.dims == ("time", "latitude", "longitude")
+    optimized = OPERATIONS.encoding_optimize(str(first), "temperature", str(output / "optimized.nc"), 4)
+    assert optimized["summary"]["compression_level"] == 4

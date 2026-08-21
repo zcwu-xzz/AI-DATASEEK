@@ -25,7 +25,7 @@ def build_command(tool_name: str, arguments: dict[str, Any]) -> list[str]:
         command += ["--max-values", str(arguments["max_values"])]
     if "output_path" in arguments:
         command += ["--output-path", str(arguments["output_path"])]
-    for key, flag in (("variable", "--variable"), ("target_unit", "--target-unit"), ("time_name", "--time-name"), ("dimension", "--dimension"), ("frequency", "--frequency")):
+    for key, flag in (("variable", "--variable"), ("target_unit", "--target-unit"), ("time_name", "--time-name"), ("dimension", "--dimension"), ("frequency", "--frequency"), ("compression_level", "--compression-level"), ("vector_path", "--vector-path")):
         if arguments.get(key) is not None:
             command += [flag, str(arguments[key])]
     if arguments.get("index") is not None:

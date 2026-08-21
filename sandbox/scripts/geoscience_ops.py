@@ -16,6 +16,7 @@ from rasterio.warp import reproject
 import xarray as xr
 import geopandas as gpd
 from rasterio.features import rasterize
+from rasterio.mask import mask as clip_raster
 
 MAX_VALUES = 20_000_000
 
@@ -355,6 +356,105 @@ def raster_classification_compare(args: argparse.Namespace) -> dict[str, Any]:
         union=matrix[i,:].sum()+matrix[:,i].sum()-matrix[i,i]; ious.append(float(matrix[i,i]/union) if union else None)
     return result("raster_classification_compare", labels=labels, confusion_matrix=matrix.tolist(), valid_pixels=total, overall_accuracy=accuracy, mean_iou=float(np.nanmean([x for x in ious if x is not None])) if any(x is not None for x in ious) else None, per_class_iou=ious)
 
+def vector_schema_profile(args: argparse.Namespace) -> dict[str, Any]:
+    gdf=gpd.read_file(args.input_path); fields={}
+    for name in gdf.columns:
+        if name==gdf.geometry.name: continue
+        series=gdf[name]; item={"dtype":str(series.dtype),"null_count":int(series.isna().sum()),"unique_count":int(series.nunique(dropna=True))}
+        if pd.api.types.is_numeric_dtype(series): item.update(minimum=json_value(series.min()),maximum=json_value(series.max()),mean=json_value(series.mean()))
+        elif item["unique_count"]<=args.max_categories: item["categories"]={str(k):int(v) for k,v in series.fillna("<NULL>").value_counts().head(args.max_categories).items()}
+        fields[name]=item
+    return result("vector_schema_profile",feature_count=len(gdf),fields=fields)
+
+def vector_topology_validate(args: argparse.Namespace) -> dict[str, Any]:
+    gdf=gpd.read_file(args.input_path); geom=gdf.geometry
+    invalid=~geom.is_valid; empty=geom.isna()|geom.is_empty; duplicates=geom.duplicated(keep=False)
+    return result("vector_topology_validate",feature_count=len(gdf),valid=not bool((invalid|empty|duplicates).any()),invalid_geometry_count=int(invalid.sum()),empty_geometry_count=int(empty.sum()),duplicate_geometry_count=int(duplicates.sum()),invalid_indices=[json_value(v) for v in gdf.index[invalid].tolist()[:100]])
+
+def vector_clip_overlay(args: argparse.Namespace) -> dict[str, Any]:
+    left=gpd.read_file(args.input_path); right=gpd.read_file(args.overlay_path)
+    if left.crs and right.crs and left.crs!=right.crs: right=right.to_crs(left.crs)
+    if args.operation=="clip": output=gpd.clip(left,right)
+    elif args.operation=="erase": output=gpd.overlay(left,right,how="difference",keep_geom_type=False)
+    else: output=gpd.overlay(left,right,how=args.operation,keep_geom_type=False)
+    target=output_path(args.output_path); output.to_file(target,driver="GeoJSON")
+    return result("vector_clip_overlay",operation=args.operation,feature_count=len(output),artifacts=[{"path":str(target),"type":"application/geo+json","size_bytes":target.stat().st_size}])
+
+def vector_dissolve_aggregate(args: argparse.Namespace) -> dict[str, Any]:
+    gdf=gpd.read_file(args.input_path)
+    if args.field not in gdf.columns: raise GeoScienceError(f"unknown dissolve field: {args.field}")
+    aggregations={name:args.method for name in args.aggregate_fields if name in gdf.columns}
+    output=gdf.dissolve(by=args.field,aggfunc=aggregations or "first",as_index=False)
+    target=output_path(args.output_path); output.to_file(target,driver="GeoJSON")
+    return result("vector_dissolve_aggregate",feature_count=len(output),group_field=args.field,artifacts=[{"path":str(target),"type":"application/geo+json","size_bytes":target.stat().st_size}])
+
+def vector_format_convert(args: argparse.Namespace) -> dict[str, Any]:
+    gdf=gpd.read_file(args.input_path); target=output_path(args.output_path); suffix=target.suffix.lower()
+    drivers={".geojson":"GeoJSON",".gpkg":"GPKG",".shp":"ESRI Shapefile",".parquet":"Parquet"}
+    if suffix not in drivers: raise GeoScienceError("output must be .geojson, .gpkg, .shp or .parquet")
+    if suffix==".parquet": gdf.to_parquet(target,index=False)
+    else: gdf.to_file(target,driver=drivers[suffix],encoding=args.encoding)
+    return result("vector_format_convert",feature_count=len(gdf),format=drivers[suffix],crs=str(gdf.crs) if gdf.crs else None,artifacts=[{"path":str(target),"type":"application/octet-stream","size_bytes":target.stat().st_size}])
+
+def raster_clip_by_vector(args: argparse.Namespace) -> dict[str, Any]:
+    gdf=gpd.read_file(args.vector_path); target=output_path(args.output_path)
+    with rasterio.open(args.input_path) as src:
+        if gdf.crs and src.crs and gdf.crs!=src.crs: gdf=gdf.to_crs(src.crs)
+        shapes=[g.__geo_interface__ for g in gdf.geometry if g is not None and not g.is_empty]
+        data,transform=clip_raster(src,shapes,crop=True,all_touched=args.all_touched); profile=src.profile.copy(); profile.update(height=data.shape[1],width=data.shape[2],transform=transform,compress="deflate")
+        with rasterio.open(target,"w",**profile) as dst: dst.write(data)
+    return result("raster_clip_by_vector",shape=list(data.shape),artifacts=[{"path":str(target),"type":"image/tiff","size_bytes":target.stat().st_size}])
+
+def raster_calculator(args: argparse.Namespace) -> dict[str, Any]:
+    paths=[Path(p) for p in args.input_paths]; target=output_path(args.output_path); arrays=[]
+    with rasterio.open(paths[0]) as first:
+        profile=first.profile.copy(); signature=(first.crs,first.transform,first.shape); arrays.append(first.read(args.band,masked=True).astype("float64"))
+    for path in paths[1:]:
+        with rasterio.open(path) as src:
+            if (src.crs,src.transform,src.shape)!=signature: raise GeoScienceError("calculator inputs must be grid-aligned")
+            arrays.append(src.read(args.band,masked=True).astype("float64"))
+    value=arrays[0]
+    for other in arrays[1:]:
+        if args.operation=="add": value=value+other
+        elif args.operation=="subtract": value=value-other
+        elif args.operation=="multiply": value=value*other
+        elif args.operation=="divide": value=np.ma.masked_invalid(value/other)
+        elif args.operation=="minimum": value=np.ma.minimum(value,other)
+        else: value=np.ma.maximum(value,other)
+    nodata=-9999.0; profile.update(count=1,dtype="float32",nodata=nodata,compress="deflate")
+    with rasterio.open(target,"w",**profile) as dst: dst.write(value.filled(nodata).astype("float32"),1)
+    return result("raster_calculator",calculation=args.operation,input_count=len(paths),artifacts=[{"path":str(target),"type":"image/tiff","size_bytes":target.stat().st_size}])
+
+def raster_nodata_normalize(args: argparse.Namespace) -> dict[str, Any]:
+    target=output_path(args.output_path)
+    with rasterio.open(args.input_path) as src:
+        data=src.read(masked=True).astype("float64"); invalid=np.ma.getmaskarray(data)|~np.isfinite(data.data)
+        if args.minimum is not None: invalid|=data.data<args.minimum
+        if args.maximum is not None: invalid|=data.data>args.maximum
+        profile=src.profile.copy(); profile.update(dtype="float32",nodata=args.nodata,compress="deflate")
+        with rasterio.open(target,"w",**profile) as dst: dst.write(np.where(invalid,args.nodata,data.data).astype("float32"))
+    return result("raster_nodata_normalize",invalid_pixels=int(invalid.sum()),nodata=args.nodata,artifacts=[{"path":str(target),"type":"image/tiff","size_bytes":target.stat().st_size}])
+
+def raster_reclassify(args: argparse.Namespace) -> dict[str, Any]:
+    rules=json.loads(args.rules); target=output_path(args.output_path)
+    with rasterio.open(args.input_path) as src:
+        source=src.read(args.band,masked=True); classified=np.full(source.shape,args.default,dtype="int32")
+        for rule in rules:
+            low,high,value=rule["min"],rule["max"],rule["value"]; classified[(source.data>=low)&(source.data<high)&~np.ma.getmaskarray(source)]=value
+        profile=src.profile.copy(); profile.update(count=1,dtype="int32",nodata=args.nodata,compress="deflate")
+        classified[np.ma.getmaskarray(source)]=args.nodata
+        with rasterio.open(target,"w",**profile) as dst: dst.write(classified,1)
+    return result("raster_reclassify",rule_count=len(rules),classes=sorted(np.unique(classified[classified!=args.nodata]).tolist()),artifacts=[{"path":str(target),"type":"image/tiff","size_bytes":target.stat().st_size}])
+
+def raster_scale_dtype_convert(args: argparse.Namespace) -> dict[str, Any]:
+    target=output_path(args.output_path); dtype=np.dtype(args.dtype)
+    with rasterio.open(args.input_path) as src:
+        data=src.read(masked=True).astype("float64")*args.scale+args.offset; info=np.iinfo(dtype) if np.issubdtype(dtype,np.integer) else None
+        if info: data=np.ma.clip(data,info.min,info.max)
+        nodata=args.nodata if args.nodata is not None else (info.min if info else -9999.0); profile=src.profile.copy(); profile.update(dtype=str(dtype),nodata=nodata,compress="deflate")
+        with rasterio.open(target,"w",**profile) as dst: dst.write(data.filled(nodata).astype(dtype))
+    return result("raster_scale_dtype_convert",dtype=str(dtype),scale=args.scale,offset=args.offset,nodata=nodata,artifacts=[{"path":str(target),"type":"image/tiff","size_bytes":target.stat().st_size}])
+
 def main() -> int:
     p = argparse.ArgumentParser(); sub = p.add_subparsers(dest="op", required=True)
     def common(name: str, input_paths=True):
@@ -387,6 +487,16 @@ def main() -> int:
     c = sub.add_parser("raster-focal-statistics"); c.add_argument("input_path"); c.add_argument("--method",choices=("mean","median","std","min","max"),default="mean"); c.add_argument("--window",type=int,default=3)
     c = sub.add_parser("raster-cog-validate-convert"); c.add_argument("input_path"); c.add_argument("--output-path"); c.add_argument("--compression",default="deflate")
     c = sub.add_parser("raster-classification-compare"); c.add_argument("reference_path"); c.add_argument("prediction_path"); c.add_argument("--reference-band",type=int,default=1); c.add_argument("--prediction-band",type=int,default=1)
+    c = sub.add_parser("vector-schema-profile"); c.add_argument("input_path"); c.add_argument("--max-categories",type=int,default=30)
+    c = sub.add_parser("vector-topology-validate"); c.add_argument("input_path")
+    c = sub.add_parser("vector-clip-overlay"); c.add_argument("input_path"); c.add_argument("overlay_path"); c.add_argument("output_path"); c.add_argument("--operation",choices=("clip","intersection","union","erase","symmetric_difference"),default="clip")
+    c = sub.add_parser("vector-dissolve-aggregate"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("field"); c.add_argument("--aggregate-fields",nargs="*",default=[]); c.add_argument("--method",choices=("sum","mean","min","max","first"),default="sum")
+    c = sub.add_parser("vector-format-convert"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--encoding",default="UTF-8")
+    c = sub.add_parser("raster-clip-by-vector"); c.add_argument("input_path"); c.add_argument("vector_path"); c.add_argument("output_path"); c.add_argument("--all-touched",action="store_true")
+    c = sub.add_parser("raster-calculator"); c.add_argument("input_paths",nargs="+"); c.add_argument("output_path"); c.add_argument("--operation",choices=("add","subtract","multiply","divide","minimum","maximum"),required=True); c.add_argument("--band",type=int,default=1)
+    c = sub.add_parser("raster-nodata-normalize"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--nodata",type=float,default=-9999.0); c.add_argument("--minimum",type=float); c.add_argument("--maximum",type=float)
+    c = sub.add_parser("raster-reclassify"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("rules"); c.add_argument("--band",type=int,default=1); c.add_argument("--default",type=int,default=0); c.add_argument("--nodata",type=int,default=-9999)
+    c = sub.add_parser("raster-scale-dtype-convert"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--dtype",choices=("uint8","uint16","int16","int32","float32","float64"),required=True); c.add_argument("--scale",type=float,default=1.0); c.add_argument("--offset",type=float,default=0.0); c.add_argument("--nodata",type=float)
     a = p.parse_args()
     try:
         if a.op == "collection-inspect": r = collection_inspect(a)
@@ -415,6 +525,16 @@ def main() -> int:
         elif a.op == "raster-focal-statistics": r = raster_focal_statistics(a)
         elif a.op == "raster-cog-validate-convert": r = raster_cog_validate_convert(a)
         elif a.op == "raster-classification-compare": r = raster_classification_compare(a)
+        elif a.op == "vector-schema-profile": r = vector_schema_profile(a)
+        elif a.op == "vector-topology-validate": r = vector_topology_validate(a)
+        elif a.op == "vector-clip-overlay": r = vector_clip_overlay(a)
+        elif a.op == "vector-dissolve-aggregate": r = vector_dissolve_aggregate(a)
+        elif a.op == "vector-format-convert": r = vector_format_convert(a)
+        elif a.op == "raster-clip-by-vector": r = raster_clip_by_vector(a)
+        elif a.op == "raster-calculator": r = raster_calculator(a)
+        elif a.op == "raster-nodata-normalize": r = raster_nodata_normalize(a)
+        elif a.op == "raster-reclassify": r = raster_reclassify(a)
+        elif a.op == "raster-scale-dtype-convert": r = raster_scale_dtype_convert(a)
         else: r = artifact_validate(a)
     except Exception as exc:
         r = {"success": False, "operation": a.op, "error": f"{type(exc).__name__}: {exc}"}

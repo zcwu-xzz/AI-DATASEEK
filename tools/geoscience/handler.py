@@ -34,6 +34,16 @@ OPS = {
     "geoscience_raster_focal_statistics": "raster-focal-statistics",
     "geoscience_raster_cog_validate_convert": "raster-cog-validate-convert",
     "geoscience_raster_classification_compare": "raster-classification-compare",
+    "vector_schema_profile": "vector-schema-profile",
+    "vector_topology_validate": "vector-topology-validate",
+    "vector_clip_overlay": "vector-clip-overlay",
+    "vector_dissolve_aggregate": "vector-dissolve-aggregate",
+    "vector_format_convert": "vector-format-convert",
+    "raster_clip_by_vector": "raster-clip-by-vector",
+    "raster_calculator": "raster-calculator",
+    "raster_nodata_normalize": "raster-nodata-normalize",
+    "raster_reclassify": "raster-reclassify",
+    "raster_scale_dtype_convert": "raster-scale-dtype-convert",
 }
 
 def build_command(tool_name: str, arguments: dict[str, Any]) -> list[str]:
@@ -97,6 +107,25 @@ def build_command(tool_name: str, arguments: dict[str, Any]) -> list[str]:
         return command + ["--compression", str(arguments.get("compression", "deflate"))]
     if tool_name == "geoscience_raster_classification_compare":
         return command + [str(arguments["reference_path"]), str(arguments["prediction_path"]), "--reference-band", str(arguments.get("reference_band", 1)), "--prediction-band", str(arguments.get("prediction_band", 1))]
+    if tool_name == "vector_schema_profile": return command + [str(arguments["input_path"]), "--max-categories", str(arguments.get("max_categories", 30))]
+    if tool_name == "vector_topology_validate": return command + [str(arguments["input_path"])]
+    if tool_name == "vector_clip_overlay": return command + [str(arguments["input_path"]),str(arguments["overlay_path"]),str(arguments["output_path"]),"--operation",str(arguments.get("operation","clip"))]
+    if tool_name == "vector_dissolve_aggregate": return command + [str(arguments["input_path"]),str(arguments["output_path"]),str(arguments["field"]),"--aggregate-fields",*map(str,arguments.get("aggregate_fields",[])),"--method",str(arguments.get("method","sum"))]
+    if tool_name == "vector_format_convert": return command + [str(arguments["input_path"]),str(arguments["output_path"]),"--encoding",str(arguments.get("encoding","UTF-8"))]
+    if tool_name == "raster_clip_by_vector": return command + [str(arguments["input_path"]),str(arguments["vector_path"]),str(arguments["output_path"])] + (["--all-touched"] if arguments.get("all_touched") else [])
+    if tool_name == "raster_calculator": return command + [*map(str,arguments["input_paths"]),str(arguments["output_path"]),"--operation",str(arguments["operation"]),"--band",str(arguments.get("band",1))]
+    if tool_name == "raster_nodata_normalize":
+        command += [str(arguments["input_path"]),str(arguments["output_path"]),"--nodata",str(arguments.get("nodata",-9999.0))]
+        if arguments.get("minimum") is not None: command += ["--minimum",str(arguments["minimum"])]
+        if arguments.get("maximum") is not None: command += ["--maximum",str(arguments["maximum"])]
+        return command
+    if tool_name == "raster_reclassify":
+        import json
+        return command + [str(arguments["input_path"]),str(arguments["output_path"]),json.dumps(arguments["rules"],separators=(",",":")),"--band",str(arguments.get("band",1)),"--default",str(arguments.get("default",0)),"--nodata",str(arguments.get("nodata",-9999))]
+    if tool_name == "raster_scale_dtype_convert":
+        command += [str(arguments["input_path"]),str(arguments["output_path"]),"--dtype",str(arguments["dtype"]),"--scale",str(arguments.get("scale",1.0)),"--offset",str(arguments.get("offset",0.0))]
+        if arguments.get("nodata") is not None: command += ["--nodata",str(arguments["nodata"])]
+        return command
     for name, value in arguments.items():
         if value is None or name == "timeout_seconds": continue
         flag = "--" + name.replace("_", "-") if name.startswith("input_") or name in {"variable", "from_unit", "to_unit", "bit", "input_dir", "input_paths"} else None

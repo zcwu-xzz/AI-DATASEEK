@@ -1,13 +1,19 @@
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, StreamingResponse
+from starlette.background import BackgroundTask
+from tempfile import SpooledTemporaryFile
+from pathlib import PurePosixPath
+import zipfile
 
 from app.application.errors.exceptions import ForbiddenError, UpstreamServiceError
 from app.application.services.data_center_dataset_service import DataCenterDatasetService
 from app.application.services.dataset_suggested_question_service import DatasetSuggestedQuestionService
+from app.application.services.data_product_service import DataProductService
 from app.domain.models.user import User, UserRole
 from app.infrastructure.external.sso_client import resolve_sso_uid
 from app.application.services.agent_service import AgentService
 from app.interfaces.dependencies import get_agent_service, get_current_user
+from app.infrastructure.external.file.factory import get_file_storage
 from app.interfaces.schemas.base import APIResponse
 from app.interfaces.schemas.dataset import (
     DataCenterDatasetCatalogResponse,
@@ -16,6 +22,8 @@ from app.interfaces.schemas.dataset import (
     DatasetSuggestedQuestionsResponse,
     DatasetSessionHistoryItem,
     DatasetSessionHistoryResponse,
+    DataProductResponse,
+    DataProductUpdateRequest,
     dataset_response,
 )
 
@@ -60,6 +68,7 @@ async def create_dataset_submission(
         summary=submission.summary,
         keywords=submission.keywords,
         storage_directory=submission.storage_directory,
+        nc_view_url=str(submission.ncViewUrl) if submission.ncViewUrl else None,
         created_by=current_user.id,
         sso_uid=sso_uid,
     )
@@ -90,6 +99,80 @@ async def get_data_center_dataset(
 ) -> APIResponse[DataCenterDatasetResponse]:
     dataset = await DataCenterDatasetService().get_dataset(dataset_id, user_id=current_user.id)
     return APIResponse.success(dataset_response(dataset))
+
+
+@router.get(
+    "/{dataset_id}/data-products",
+    response_model=APIResponse[list[DataProductResponse]],
+)
+async def list_dataset_data_products(
+    dataset_id: str,
+    current_user: User = Depends(get_current_user),
+) -> APIResponse[list[DataProductResponse]]:
+    await DataCenterDatasetService().get_dataset(dataset_id, user_id=current_user.id)
+    products = await DataProductService().list_for_dataset(dataset_id, current_user.id)
+    return APIResponse.success([DataProductResponse.model_validate(item) for item in products])
+
+
+@router.put("/{dataset_id}/data-products/{product_id}", response_model=APIResponse[DataProductResponse])
+async def update_dataset_data_product(
+    dataset_id: str,
+    product_id: str,
+    request: DataProductUpdateRequest,
+    current_user: User = Depends(get_current_user),
+) -> APIResponse[DataProductResponse]:
+    await DataCenterDatasetService().get_dataset(dataset_id, user_id=current_user.id)
+    product = await DataProductService().get(product_id, current_user.id)
+    if product.dataset_id != dataset_id:
+        raise ForbiddenError("Data product does not belong to this dataset")
+    updated = await DataProductService().update_metadata(product_id, current_user.id, request.name, request.description, request.generation_method, request.created_by, request.directories, [file.model_dump() for file in request.files])
+    return APIResponse.success(DataProductResponse.model_validate(updated))
+
+
+@router.delete("/{dataset_id}/data-products/{product_id}", response_model=APIResponse[dict])
+async def delete_dataset_data_product(
+    dataset_id: str,
+    product_id: str,
+    current_user: User = Depends(get_current_user),
+) -> APIResponse[dict]:
+    await DataCenterDatasetService().get_dataset(dataset_id, user_id=current_user.id)
+    product = await DataProductService().get(product_id, current_user.id)
+    if product.dataset_id != dataset_id:
+        raise ForbiddenError("Data product does not belong to this dataset")
+    await DataProductService().delete(product_id, current_user.id)
+    return APIResponse.success({"deleted": True})
+
+
+@router.get("/{dataset_id}/data-products/{product_id}/download")
+async def download_dataset_data_product(
+    dataset_id: str,
+    product_id: str,
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    await DataCenterDatasetService().get_dataset(dataset_id, user_id=current_user.id)
+    product = await DataProductService().get(product_id, current_user.id)
+    if product.dataset_id != dataset_id:
+        raise ForbiddenError("Data product does not belong to this dataset")
+    archive = SpooledTemporaryFile(max_size=32 * 1024 * 1024, mode="w+b")
+    storage = get_file_storage()
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        for item in product.files:
+            path = PurePosixPath(item.relative_path)
+            if path.is_absolute() or ".." in path.parts:
+                continue
+            stream, _ = await storage.download_file(item.file_id, current_user.id)
+            try:
+                bundle.writestr(path.as_posix(), stream.read())
+            finally:
+                stream.close()
+    archive.seek(0)
+    filename = f"{product.product_id}-v{product.version}.zip"
+    return StreamingResponse(
+        archive,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        background=BackgroundTask(archive.close),
+    )
 
 
 @router.get("/{dataset_id}/preview", response_class=FileResponse)

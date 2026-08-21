@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  completeRunningSteps,
   failRunningSteps,
   findCurrentTurnRunningStep,
   findCurrentTurnStep,
@@ -67,6 +68,25 @@ test('an error only fails running steps in the current turn', () => {
   assert.equal(messages[3].content.status, 'failed');
 });
 
+test('a done event completes a running step in the current turn', () => {
+  const oldStep = { id: '1', description: 'old', status: 'running', tools: [], timestamp: 1 };
+  const currentStep = { id: '2', description: 'export', status: 'running', tools: [], timestamp: 2 };
+  const messages = [
+    message('user', { content: 'first request' }),
+    message('step', oldStep),
+    message('user', { content: 'export data' }),
+    message('step', currentStep),
+    message('assistant', { content: 'done' }),
+  ];
+
+  const completed = completeRunningSteps(messages, 10);
+
+  assert.equal(completed.length, 1);
+  assert.equal(messages[1].content.status, 'running');
+  assert.equal(messages[3].content.status, 'completed');
+  assert.equal(messages[3].content.ended_at, 10);
+});
+
 test('task summary stores only the rounded elapsed milliseconds', () => {
   const messages = [
     message('user', { content: 'analyze', timestamp: 10 }),
@@ -75,9 +95,9 @@ test('task summary stores only the rounded elapsed milliseconds', () => {
 
   const summary = insertTaskExecutionSummary(messages, 12, 1234.6);
 
-  assert.deepEqual(summary, { timestamp: 12, duration_ms: 1235 });
-  assert.equal(messages.at(-1).type, 'task-summary');
-  assert.deepEqual(Object.keys(messages.at(-1).content).sort(), ['duration_ms', 'timestamp']);
+  assert.deepEqual(summary, { timestamp: 12, duration_ms: 1235, has_steps: false });
+  assert.equal(messages[1].type, 'task-summary');
+  assert.deepEqual(Object.keys(messages[1].content).sort(), ['duration_ms', 'has_steps', 'timestamp']);
 });
 
 test('replayed task summary falls back to event timestamps in milliseconds', () => {

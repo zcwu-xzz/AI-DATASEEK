@@ -31,6 +31,7 @@ from app.domain.models.execution_node import (
     SandboxAllocationStatus,
 )
 from app.domain.models.dataset import DataCenterDataset, DatasetFile, DatasetLocation
+from app.domain.models.data_product import DataProduct
 from pymongo import IndexModel, ASCENDING, DESCENDING
 from typing import Any
 
@@ -382,6 +383,7 @@ class DataCenterDatasetDocument(Document):
     data_type: str = ""
     tags: List[str] = Field(default_factory=list)
     preview_url: str = ""
+    nc_view_url: str | None = None
     files: List[DatasetFile] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     locations: List[DatasetLocation] = Field(default_factory=list)
@@ -402,6 +404,35 @@ class DataCenterDatasetDocument(Document):
             IndexModel([("enabled", ASCENDING), ("updated_at", DESCENDING)]),
             IndexModel([("created_by", ASCENDING), ("is_submission", ASCENDING), ("updated_at", DESCENDING)]),
             IndexModel([("locations.node_id", ASCENDING)]),
+        ]
+
+
+class DataProductDocument(Document):
+    product_id: str
+    dataset_id: str
+    source_session_id: str
+    name: str
+    description: str = ""
+    generation_method: str = "agent_tool"
+    created_by: str
+    owner_id: str | None = None
+    version: int = 1
+    files: List[Dict[str, Any]] = Field(default_factory=list)
+    directories: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def to_domain(self) -> DataProduct:
+        return DataProduct.model_validate(self.model_dump(exclude={"id"}))
+
+    class Settings:
+        name = "data_products"
+        indexes = [
+            IndexModel([("product_id", ASCENDING)], unique=True),
+            IndexModel([("dataset_id", ASCENDING), ("created_at", DESCENDING)]),
+            IndexModel([("source_session_id", ASCENDING)]),
+            IndexModel([("created_by", ASCENDING), ("updated_at", DESCENDING)]),
         ]
 
 

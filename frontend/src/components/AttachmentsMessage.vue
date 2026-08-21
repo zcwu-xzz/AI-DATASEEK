@@ -55,12 +55,17 @@
         <FileSearch :size="16" />
         <span class="text-sm text-[var(--icon-secondary)]">{{ t('View all files in this task') }}</span>
       </button>
+      <button v-if="props.showProductButton && !props.hideAllFilesButton" @click="$emit('showProduct')"
+        class="h-[54px] pl-4 pr-1.5 flex items-center justify-center gap-1.5 w-[280px] rounded-[12px] border-[0.5px] border-[var(--border-dark)] bg-[var(--background-menu-white)] hover:bg-[var(--background-tsp-menu-white)]">
+        <PackageOpen :size="16" />
+        <span class="text-sm text-[var(--icon-secondary)]">保存为数据产品</span>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { FileSearch, Eye } from 'lucide-vue-next';
+import { FileSearch, Eye, PackageOpen } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import type { AttachmentsContent } from '../types/message';
 import { formatFileSize, getFileTypeText } from '../utils/fileType';
@@ -75,7 +80,9 @@ const { showSessionFileList } = useSessionFileList();
 const props = defineProps<{
   content: AttachmentsContent;
   hideAllFilesButton?: boolean;
+  showProductButton?: boolean;
 }>();
+defineEmits<{ (e: 'showProduct'): void }>();
 
 const showAllFiles = () => {
   showSessionFileList();

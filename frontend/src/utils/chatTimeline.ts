@@ -57,6 +57,25 @@ export const failRunningSteps = (
   return failedSteps;
 };
 
+export const completeRunningSteps = (
+  messages: Message[],
+  endedAt: number,
+  currentTurnOnly = true,
+): StepContent[] => {
+  const turnStart = currentTurnOnly ? getCurrentTurnStartIndex(messages) : 0;
+  const completedSteps: StepContent[] = [];
+  for (let index = turnStart; index < messages.length; index += 1) {
+    const message = messages[index];
+    if (message.type !== 'step') continue;
+    const step = message.content as StepContent;
+    if (step.status !== 'running') continue;
+    step.status = 'completed';
+    step.ended_at = endedAt;
+    completedSteps.push(step);
+  }
+  return completedSteps;
+};
+
 export const insertTaskExecutionSummary = (
   messages: Message[],
   endedAt: number,

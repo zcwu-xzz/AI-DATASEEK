@@ -171,6 +171,7 @@ async def _create_submission(
     service: DataCenterDatasetService,
     *,
     created_by: str = "owner-a",
+    nc_view_url: str | None = None,
 ) -> DataCenterDataset:
     return await service.create_submission(
         external_id="external-1",
@@ -179,6 +180,7 @@ async def _create_submission(
         keywords=["raster", "raster", "science"],
         storage_directory=" /srv/datasets/center-a ",
         created_by=created_by,
+        nc_view_url=nc_view_url,
         sso_uid="sso-user-1",
     )
 
@@ -229,6 +231,7 @@ def test_submission_schema_uses_one_normalized_storage_directory():
 
     assert request.keywords == ["raster", "science"]
     assert request.storage_directory == "/srv/datasets/example"
+    assert request.ncViewUrl is None
 
     with pytest.raises(ValidationError):
         DatasetSubmissionRequest(
@@ -240,6 +243,30 @@ def test_submission_schema_uses_one_normalized_storage_directory():
             token="sso-token",
         )
 
+
+def test_submission_schema_accepts_only_http_ncview_urls():
+    request = DatasetSubmissionRequest(
+        external_id="external-1",
+        name="Dataset",
+        summary="Summary",
+        keywords=["science"],
+        storage_directory="/srv/datasets/example",
+        token="sso-token",
+        ncViewUrl="https://ncview.example.com/viewer?id=external-1",
+    )
+
+    assert str(request.ncViewUrl) == "https://ncview.example.com/viewer?id=external-1"
+
+    with pytest.raises(ValidationError):
+        DatasetSubmissionRequest(
+            external_id="external-1",
+            name="Dataset",
+            summary="Summary",
+            keywords=["science"],
+            storage_directory="/srv/datasets/example",
+            token="sso-token",
+            ncViewUrl="javascript:alert(1)",
+        )
 
 @pytest.mark.asyncio
 async def test_submission_persists_recursive_inventory_and_survives_service_recreation(monkeypatch):
@@ -253,7 +280,8 @@ async def test_submission_persists_recursive_inventory_and_survives_service_recr
         clock,
     ) = _install_submission_dependencies(monkeypatch)
 
-    dataset = await _create_submission(service)
+    nc_view_url = "https://ncview.example.com/viewer?id=external-1"
+    dataset = await _create_submission(service, nc_view_url=nc_view_url)
 
     ensure_node.assert_awaited_once_with()
     inspect_directory.assert_called_once_with(
@@ -264,6 +292,7 @@ async def test_submission_persists_recursive_inventory_and_survives_service_recr
     assert dataset.dataset_id.startswith("tds_")
     assert dataset.created_by == "owner-a"
     assert dataset.is_submission is True
+    assert dataset.nc_view_url == nc_view_url
     assert dataset.tags == ["raster", "science"]
     assert dataset.metadata == {
         "temporary": True,
@@ -290,6 +319,7 @@ async def test_submission_persists_recursive_inventory_and_survives_service_recr
     assert [item.size for item in dataset.files] == [42, 1_024, 2_048]
 
     public_payload = dataset_response(dataset).model_dump(mode="json")
+    assert public_payload["ncViewUrl"] == nc_view_url
     assert [item["name"] for item in public_payload["files"]] == [
         "metadata.json",
         "tile-01.tif",
@@ -317,6 +347,7 @@ async def test_submission_persists_recursive_inventory_and_survives_service_recr
     restored = await restarted_service.get_dataset(dataset.dataset_id, user_id="owner-a")
 
     assert restored == dataset
+    assert restored.nc_view_url == nc_view_url
     public_json = dataset_response(restored).model_dump_json()
     assert inventory.canonical_source_directory not in public_json
     assert "expires_at" not in public_json

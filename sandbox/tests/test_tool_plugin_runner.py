@@ -15,12 +15,15 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_runner_discovers_builtin_scientific_tools():
     registry = load_registry(ROOT / "tools")
 
-    assert len(registry) == 73
+    assert len(registry) == 107
     assert "scientific_inspect" in registry
     assert "scientific_region_timeseries" in registry
     assert "geoscience_collection_inspect" in registry
     assert "hierarchical_store_inspect" in registry
     assert "presentation_inspect" in registry
+    assert "geodata_product_package" in registry
+    assert "netcdf_multi_file_concat" in registry
+    assert "raster_calculator" in registry
 
 
 def test_runner_rejects_duplicate_names(tmp_path):

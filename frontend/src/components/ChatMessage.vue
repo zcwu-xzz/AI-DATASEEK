@@ -95,6 +95,9 @@
         >
           <Share2Icon :size="17" />
         </button>
+        <button v-if="showProductButton" type="button" class="flex h-8 w-8 items-center justify-center rounded-md text-[var(--icon-secondary)] transition-colors hover:bg-[var(--fill-tsp-white-light)] hover:text-[var(--icon-primary)]" aria-label="保存为数据产品" title="保存为数据产品" @click="$emit('showProduct')">
+          <PackageOpen :size="17" />
+        </button>
       </div>
     </template>
     <Teleport to="body">
@@ -150,9 +153,9 @@
     @toggle="$emit('taskSummaryToggle')"
   />
   <div v-else-if="message.type === 'attachments' && attachmentsContent.role === 'assistant'" class="flex flex-col gap-2 w-full group" :class="hideAssistantHeader ? 'mt-0' : 'mt-3'">
-    <AttachmentsMessage :content="attachmentsContent" :hideAllFilesButton="hideAllFilesButton"/>
+    <AttachmentsMessage :content="attachmentsContent" :hideAllFilesButton="hideAllFilesButton" :show-product-button="showProductButton" @showProduct="$emit('showProduct')"/>
   </div>
-  <AttachmentsMessage v-else-if="message.type === 'attachments'" :content="attachmentsContent" :hideAllFilesButton="hideAllFilesButton"/>
+  <AttachmentsMessage v-else-if="message.type === 'attachments'" :content="attachmentsContent" :hideAllFilesButton="hideAllFilesButton" :show-product-button="showProductButton" @showProduct="$emit('showProduct')"/>
 </template>
 
 <script setup lang="ts">
@@ -160,7 +163,7 @@ import { Message, MessageContent, AttachmentsContent, TaskSummaryContent } from 
 import ToolUse from './ToolUse.vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { CheckIcon, Copy as CopyIcon, Share2 as Share2Icon, ShieldAlert, ThumbsDown, ThumbsUp, X } from 'lucide-vue-next';
+import { CheckIcon, Copy as CopyIcon, PackageOpen, Share2 as Share2Icon, ShieldAlert, ThumbsDown, ThumbsUp, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch, type Component } from 'vue';
 import { ToolContent, StepContent } from '../types/message';
 import { useRelativeTime } from '../composables/useTime';
@@ -180,6 +183,7 @@ const props = defineProps<{
   hideAllFilesButton?: boolean;
   hideHeader?: boolean;
   showAssistantActions?: boolean;
+  showProductButton?: boolean;
   taskSummaryExpanded?: boolean;
 }>();
 
@@ -189,6 +193,7 @@ const emit = defineEmits<{
   (e: 'toolClick', tool: ToolContent): void;
   (e: 'taskSummaryToggle'): void;
   (e: 'jupyterOpened', tool: ToolContent): void;
+  (e: 'showProduct'): void;
 }>();
 
 const handleToolClick = (tool: ToolContent) => {

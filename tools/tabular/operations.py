@@ -193,7 +193,95 @@ def chart_recommend(a: dict[str, Any]) -> dict[str, Any]:
     return response("table_chart_recommend", {"recommendations":recommendations,"numeric":numeric,"datetime":dates,"categorical":categorical})
 
 
-FUNCTIONS={"workbook_inspect":workbook_inspect,"table_extract":table_extract,"table_profile":table_profile,"table_schema_infer":schema_infer,"table_filter_aggregate":filter_aggregate,"table_join_compare":join_compare,"workbook_formula_audit":formula_audit,"tabular_visualize":visualize,"table_chart_recommend":chart_recommend}
+def workbook_quality_audit(a: dict[str, Any]) -> dict[str, Any]:
+    """Audit bounded worksheet quality without mutating or recalculating a workbook."""
+    import openpyxl
+
+    path = Path(a["input_path"])
+    suffix = path.suffix.lower()
+    if suffix not in {".xlsx", ".xlsm"}:
+        # Legacy XLS is read through pandas, which cannot expose cell-level
+        # metadata consistently across xlrd versions.
+        excel = pd.ExcelFile(path)
+        sheets = []
+        for name in excel.sheet_names[: a.get("max_sheets", 30)]:
+            frame = read_table(str(path), name, max_rows=a.get("max_rows", 20000))
+            sheets.append({"name": name, "rows": len(frame), "columns": len(frame.columns), "missing_cells": int(frame.isna().sum().sum()), "duplicate_rows": int(frame.duplicated().sum()), "warnings": ["cell-level formatting and formula errors are unavailable for XLS"]})
+        return response("workbook_quality_audit", {"format": suffix[1:], "sheets": sheets, "sheet_count": len(excel.sheet_names)}, warnings=["XLS quality audit is table-level because legacy cell metadata is unavailable"])
+
+    book = openpyxl.load_workbook(path, read_only=False, data_only=False, keep_links=True)
+    max_sheets = a.get("max_sheets", 30)
+    max_cells = a.get("max_cells", 200000)
+    sheets = []
+    scanned = 0
+    for sheet in book.worksheets[:max_sheets]:
+        nonempty = 0
+        formulas = 0
+        errors = 0
+        blank_rows = 0
+        header_values: list[Any] = []
+        for row_index, row in enumerate(sheet.iter_rows(), start=1):
+            if scanned >= max_cells:
+                break
+            values = [cell.value for cell in row]
+            scanned += len(values)
+            nonempty += sum(value is not None for value in values)
+            if not any(value is not None for value in values):
+                blank_rows += 1
+            if row_index == 1:
+                header_values = values
+            for cell in row:
+                if cell.data_type == "f":
+                    formulas += 1
+                if cell.data_type == "e" or (isinstance(cell.value, str) and cell.value.startswith("#")):
+                    errors += 1
+        headers = [str(value).strip() for value in header_values if value is not None and str(value).strip()]
+        duplicates = sorted({value for value in headers if headers.count(value) > 1})
+        total_cells = max(1, min(sheet.max_row * max(1, sheet.max_column), max_cells))
+        sheets.append({"name": sheet.title, "state": sheet.sheet_state, "rows": sheet.max_row, "columns": sheet.max_column, "nonempty_cells": nonempty, "missing_ratio": round(max(0, total_cells - nonempty) / total_cells, 6), "blank_rows": blank_rows, "formula_count": formulas, "error_cell_count": errors, "duplicate_headers": duplicates, "merged_range_count": len(sheet.merged_cells.ranges)})
+    warnings = []
+    if len(book.worksheets) > max_sheets:
+        warnings.append(f"only the first {max_sheets} worksheets were audited")
+    if scanned >= max_cells:
+        warnings.append(f"cell scan capped at {max_cells} cells")
+    return response("workbook_quality_audit", {"format": suffix[1:], "sheet_count": len(book.worksheets), "sheets": sheets, "scanned_cells": scanned}, warnings=warnings)
+
+
+def workbook_concat_sheets(a: dict[str, Any]) -> dict[str, Any]:
+    """Append explicitly selected worksheets and retain their source sheet."""
+    path = Path(a["input_path"])
+    excel = pd.ExcelFile(path)
+    requested = a.get("sheets") or excel.sheet_names
+    unknown = [name for name in requested if name not in excel.sheet_names]
+    if unknown:
+        raise ValueError(f"unknown worksheet: {unknown[0]}")
+    frames = []
+    for name in requested[: a.get("max_sheets", 20)]:
+        frame = read_table(str(path), name, a.get("header_row", 1), a.get("max_rows_per_sheet", 20000)).copy()
+        frame.insert(0, "_source_sheet", name)
+        frames.append(frame)
+    if not frames:
+        raise ValueError("at least one worksheet is required")
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    artifacts = write_frame(combined, a["output_path"])
+    return response("workbook_concat_sheets", {"sheets": requested[: a.get("max_sheets", 20)], "rows": len(combined), "columns": list(combined.columns), "preview": combined.head(20).to_dict("records")}, artifacts=artifacts)
+
+
+def table_pivot(a: dict[str, Any]) -> dict[str, Any]:
+    frame = read_table(a["input_path"], a.get("sheet"), a.get("header_row", 1), a.get("max_rows", 50000))
+    index = a["index"] if isinstance(a["index"], list) else [a["index"]]
+    columns = a.get("columns")
+    values = a.get("values")
+    for name in [*index, *(columns if isinstance(columns, list) else [columns] if columns else []), *(values if isinstance(values, list) else [values] if values else [])]:
+        if name not in frame:
+            raise ValueError(f"unknown pivot column: {name}")
+    pivot = pd.pivot_table(frame, index=index, columns=columns, values=values, aggfunc=a.get("aggfunc", "mean"), fill_value=a.get("fill_value"), dropna=False).reset_index()
+    pivot.columns = ["_".join(str(part) for part in column if str(part) != "") if isinstance(column, tuple) else str(column) for column in pivot.columns]
+    artifacts = write_frame(pivot, a["output_path"])
+    return response("table_pivot", {"rows": len(pivot), "columns": list(pivot.columns), "index": index, "values": values, "aggfunc": a.get("aggfunc", "mean"), "preview": pivot.head(20).to_dict("records")}, artifacts=artifacts)
+
+
+FUNCTIONS={"workbook_inspect":workbook_inspect,"table_extract":table_extract,"table_profile":table_profile,"table_schema_infer":schema_infer,"table_filter_aggregate":filter_aggregate,"table_join_compare":join_compare,"workbook_formula_audit":formula_audit,"workbook_quality_audit":workbook_quality_audit,"workbook_concat_sheets":workbook_concat_sheets,"table_pivot":table_pivot,"tabular_visualize":visualize,"table_chart_recommend":chart_recommend}
 
 
 def main() -> int:

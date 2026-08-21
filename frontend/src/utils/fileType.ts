@@ -9,6 +9,7 @@ import ImageFilePreview from '../components/filePreviews/ImageFilePreview.vue';
 import TiffFilePreview from '../components/filePreviews/TiffFilePreview.vue';
 import ShapefilePreview from '../components/filePreviews/ShapefilePreview.vue';
 import HtmlFilePreview from '../components/filePreviews/HtmlFilePreview.vue';
+import CsvFilePreview from '../components/filePreviews/CsvFilePreview.vue';
 import { findRendererByFilename } from '@/renderers/registry';
 
 export interface FileType {
@@ -68,6 +69,10 @@ export const getFileType = (filename: string): FileType => {
       icon: FileIcon,
       preview: MarkdownFilePreview,
     };
+  }
+
+  if (file_extension === 'csv' || file_extension === 'tsv') {
+    return { icon: FileIcon, preview: CsvFilePreview };
   }
   
   if (file_extension && codeFileExtensions.includes(file_extension)) {

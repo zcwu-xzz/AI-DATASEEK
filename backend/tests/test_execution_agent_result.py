@@ -851,11 +851,36 @@ async def test_unknown_tool_call_receives_tool_message_before_next_model_turn():
 
     events = [event async for event in agent.execute("run task")]
 
-    assert any(event.error == "Unknown tool: removed_tool" for event in events if hasattr(event, "error"))
+    assert not any(event.error == "Unknown tool: removed_tool" for event in events if hasattr(event, "error"))
     assert len(responses) == 1
     assert len(responses[0]) == 1
     assert isinstance(responses[0][0], ToolMessage)
     assert responses[0][0].tool_call_id == "call-unknown"
+
+
+@pytest.mark.asyncio
+async def test_common_shell_write_alias_resolves_without_user_error():
+    agent = object.__new__(BaseAgent)
+    agent.max_iterations = 2
+    agent.max_retries = 0
+    agent.retry_interval = 0
+    first = AIMessage(content="", tool_calls=[{
+        "name": "shell_write",
+        "args": {"id": "process-1", "input": "yes", "press_enter": True},
+        "id": "call-alias",
+    }])
+    final = AIMessage(content="completed")
+    tool = SimpleNamespace(toolkit=SimpleNamespace(name="shell"), name="shell_write_to_process")
+    tool.ainvoke = AsyncMock(return_value=ToolMessage(tool_call_id="call-alias", name="shell_write_to_process", content="ok"))
+    agent.ask = AsyncMock(return_value=first)
+    agent.ask_with_messages = AsyncMock(return_value=final)
+    agent.get_tool = lambda name: tool if name == "shell_write_to_process" else None
+
+    events = [event async for event in agent.execute("run task")]
+
+    assert not any(getattr(event, "error", "").startswith("Unknown tool") for event in events)
+    tool.ainvoke.assert_awaited_once()
+    assert tool.ainvoke.await_args.args[0]["name"] == "shell_write_to_process"
 
 
 @pytest.mark.asyncio

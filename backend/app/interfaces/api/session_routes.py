@@ -15,7 +15,7 @@ from app.application.services.agent_service import AgentService
 from app.application.services.token_service import TokenService
 from app.application.services.agent_profile_service import AgentProfileService
 from app.application.services.model_configuration_service import resolve_agent_profile
-from app.application.errors.exceptions import NotFoundError, UnauthorizedError
+from app.application.errors.exceptions import BadRequestError, NotFoundError, UnauthorizedError
 from app.interfaces.dependencies import get_agent_service, get_current_user, get_optional_current_user, get_token_service, verify_signature_websocket, get_agent_profile_service, get_jupyter_service
 from app.interfaces.schemas.base import APIResponse
 from app.interfaces.schemas.session import (
@@ -38,6 +38,12 @@ from app.infrastructure.repositories.skill_repository import MongoSkillRepositor
 from app.infrastructure.repositories.mongo_mcp_repository import MongoMCPRepository
 from app.domain.models.mcp_config import can_access_mcp, is_mcp_owned_by
 from app.application.services.data_center_dataset_service import DataCenterDatasetService
+from app.application.services.data_product_service import DataProductService
+from app.interfaces.schemas.dataset import (
+    DataProductCreateRequest,
+    DataProductDraftResponse,
+    DataProductResponse,
+)
 from app.infrastructure.models.documents import TaskFeedbackDocument
 
 logger = logging.getLogger(__name__)
@@ -659,6 +665,53 @@ async def get_session_files(
         FileInfoResponse.public_from_file_info(file)
         for file in _sort_session_files(files, sort_by, sort_order)
     ])
+
+
+@router.get(
+    "/{session_id}/data-product-draft",
+    response_model=APIResponse[DataProductDraftResponse],
+)
+async def get_data_product_draft(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    agent_service: AgentService = Depends(get_agent_service),
+) -> APIResponse[DataProductDraftResponse]:
+    session = await agent_service.get_session(session_id, current_user.id)
+    if not session:
+        raise NotFoundError("Session not found")
+    draft = await DataProductService().draft(session_id, current_user.id, session.files)
+    return APIResponse.success(DataProductDraftResponse.model_validate(draft))
+
+
+@router.post(
+    "/{session_id}/datasets/{dataset_id}/data-products",
+    response_model=APIResponse[DataProductResponse],
+)
+async def create_data_product(
+    session_id: str,
+    dataset_id: str,
+    request: DataProductCreateRequest,
+    current_user: User = Depends(get_current_user),
+    agent_service: AgentService = Depends(get_agent_service),
+) -> APIResponse[DataProductResponse]:
+    session = await agent_service.get_session(session_id, current_user.id)
+    if not session:
+        raise NotFoundError("Session not found")
+    if dataset_id not in session.dataset_ids:
+        raise BadRequestError("Dataset is not associated with this task")
+    await DataCenterDatasetService().get_dataset(dataset_id, user_id=current_user.id)
+    product = await DataProductService().create(
+        dataset_id=dataset_id,
+        session_id=session_id,
+        user_id=current_user.id,
+        name=request.name,
+        description=request.description,
+        generation_method=request.generation_method,
+        selected_file_ids=request.selected_file_ids,
+        primary_file_id=request.primary_file_id,
+        files=session.files,
+    )
+    return APIResponse.success(DataProductResponse.model_validate(product))
 
 
 @router.post("/{session_id}/vnc/signed-url", response_model=APIResponse[SignedUrlResponse])

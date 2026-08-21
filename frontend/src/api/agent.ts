@@ -254,6 +254,39 @@ export async function deleteTaskFeedback(sessionId: string): Promise<void> {
   await apiClient.delete<ApiResponse<TaskFeedbackResponse>>(`/sessions/${sessionId}/feedback`);
 }
 
+export interface DataProductDraft {
+  source_session_id: string;
+  suggested_name: string;
+  suggested_description: string;
+  generation_method: string;
+  files: import('./dataset').DataProductFile[];
+}
+
+export async function getDataProductDraft(sessionId: string): Promise<DataProductDraft> {
+  const response = await apiClient.get<ApiResponse<DataProductDraft>>(
+    '/sessions/' + encodeURIComponent(sessionId) + '/data-product-draft',
+  );
+  return response.data.data;
+}
+
+export async function createDataProduct(
+  sessionId: string,
+  datasetId: string,
+  payload: {
+    name: string;
+    description: string;
+    generation_method: string;
+    selected_file_ids: string[];
+    primary_file_id?: string | null;
+  },
+): Promise<import('./dataset').DataProduct> {
+  const response = await apiClient.post<ApiResponse<import('./dataset').DataProduct>>(
+    '/sessions/' + encodeURIComponent(sessionId) + '/datasets/' + encodeURIComponent(datasetId) + '/data-products',
+    payload,
+  );
+  return response.data.data;
+}
+
 /**
  * Get a shared session without authentication
  * This endpoint allows public access to sessions that have been marked as shared.

@@ -30,11 +30,42 @@ export interface DataCenterDataset {
   data_type: string;
   tags: string[];
   preview_url: string;
+  ncViewUrl?: string | null;
   files: DataCenterDatasetFile[];
   metadata: Record<string, unknown>;
   locations: DatasetLocation[];
   enabled: boolean;
   created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DataProductFile {
+  file_id: string;
+  filename: string;
+  relative_path: string;
+  role: 'data' | 'chart' | 'source' | 'report' | 'other';
+  content_type?: string | null;
+  size: number;
+  source_artifact_id?: string | null;
+  source_tool?: string | null;
+  is_primary: boolean;
+  created_at?: string | null;
+}
+
+export interface DataProduct {
+  product_id: string;
+  dataset_id: string;
+  source_session_id: string;
+  name: string;
+  description: string;
+  generation_method: string;
+  created_by: string;
+  owner_id?: string | null;
+  version: number;
+  files: DataProductFile[];
+  directories: string[];
+  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -75,4 +106,33 @@ export async function listDatasetChatSessions(datasetId: string): Promise<Datase
     `/datasets/${encodeURIComponent(datasetId)}/sessions`,
   );
   return response.data.data.sessions;
+}
+
+export async function listDatasetDataProducts(datasetId: string): Promise<DataProduct[]> {
+  const response = await apiClient.get<ApiResponse<DataProduct[]>>(
+    '/datasets/' + encodeURIComponent(datasetId) + '/data-products',
+  );
+  return response.data.data;
+}
+
+export async function updateDatasetDataProduct(datasetId: string, productId: string, payload: { name: string; description: string; generation_method: string; created_by: string; directories: string[]; files: DataProductFile[] }): Promise<DataProduct> {
+  const response = await apiClient.put<ApiResponse<DataProduct>>(
+    '/datasets/' + encodeURIComponent(datasetId) + '/data-products/' + encodeURIComponent(productId),
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function deleteDatasetDataProduct(datasetId: string, productId: string): Promise<void> {
+  await apiClient.delete<ApiResponse<{ deleted: boolean }>>(
+    '/datasets/' + encodeURIComponent(datasetId) + '/data-products/' + encodeURIComponent(productId),
+  );
+}
+
+export async function downloadDatasetDataProduct(datasetId: string, productId: string): Promise<Blob> {
+  const response = await apiClient.get(
+    '/datasets/' + encodeURIComponent(datasetId) + '/data-products/' + encodeURIComponent(productId) + '/download',
+    { responseType: 'blob' },
+  );
+  return response.data as Blob;
 }

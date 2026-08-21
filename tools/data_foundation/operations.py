@@ -353,13 +353,68 @@ def missing_gap_detect(path: str, variable: str, explicit: str | None) -> dict[s
     if time_report and time_report["gap_count"]: warnings.append(f"{time_report['gap_count']} temporal gaps detected")
     return result("netcdf_missing_gap_detect",summary={"variable":variable,"total_values":total,"missing_values":missing,"missing_fraction":missing/total if total else None,"time_axis":time_report},warnings=warnings)
 
+def multi_file_concat(paths: list[str], dimension: str, variable: str | None, output: str) -> dict[str, Any]:
+    import xarray as xr
+    target=safe_output_path(output)
+    datasets=[_decoded_dataset(path) for path in paths]
+    try:
+        merged=xr.concat([ds[[variable]] if variable else ds for ds in datasets],dim=dimension,data_vars="minimal",coords="minimal",compat="override")
+        merged.to_netcdf(target); summary={"file_count":len(paths),"dimension":dimension,"sizes":dict(merged.sizes),"variable":variable}
+    finally:
+        for ds in datasets: ds.close()
+    return result("netcdf_multi_file_concat",summary=summary,artifacts=[{"path":str(target),"type":"application/x-netcdf","size_bytes":target.stat().st_size}])
+
+def multi_file_merge(paths: list[str], output: str) -> dict[str, Any]:
+    import xarray as xr
+    target=safe_output_path(output); datasets=[_decoded_dataset(path) for path in paths]
+    try: merged=xr.merge(datasets,compat="no_conflicts",join="exact"); merged.to_netcdf(target); summary={"file_count":len(paths),"variables":list(merged.data_vars),"sizes":dict(merged.sizes)}
+    finally:
+        for ds in datasets: ds.close()
+    return result("netcdf_multi_file_merge",summary=summary,artifacts=[{"path":str(target),"type":"application/x-netcdf","size_bytes":target.stat().st_size}])
+
+def mask_by_vector(path: str, vector_path: str, variable: str | None, output: str) -> dict[str, Any]:
+    import geopandas as gpd
+    import xarray as xr
+    target=safe_output_path(output)
+    with _decoded_dataset(path) as ds:
+        name=variable or (list(ds.data_vars)[0] if len(ds.data_vars)==1 else None)
+        if not name or name not in ds.data_vars: raise ValueError("variable is required when the NetCDF has multiple variables")
+        da=ds[name]; lat=next((n for n,v in ds.coords.items() if coordinate_role(n,v)=="latitude"),None); lon=next((n for n,v in ds.coords.items() if coordinate_role(n,v)=="longitude"),None)
+        if not lat or not lon: raise ValueError("latitude and longitude coordinates are required")
+        gdf=gpd.read_file(vector_path)
+        if gdf.crs and str(gdf.crs)!="EPSG:4326": gdf=gdf.to_crs("EPSG:4326")
+        from shapely.geometry import Point
+        import numpy as np
+        points=np.array([[Point(float(x),float(y)).within(gdf.unary_union) for x in ds[lon].values] for y in ds[lat].values])
+        mask=xr.DataArray(points,dims=(lat,lon),coords={lat:ds[lat],lon:ds[lon]}); out=ds.copy(); out[name]=da.where(mask); out.to_netcdf(target)
+    return result("netcdf_mask_by_vector",summary={"variable":name,"mask_shape":list(mask.shape),"valid_grid_points":int(mask.sum())},artifacts=[{"path":str(target),"type":"application/x-netcdf","size_bytes":target.stat().st_size}])
+
+def encoding_optimize(path: str, variable: str | None, output: str, compression_level: int) -> dict[str, Any]:
+    import xarray as xr
+    target=safe_output_path(output)
+    with _decoded_dataset(path) as ds:
+        names=[variable] if variable else list(ds.data_vars); encoding={name:{"zlib":True,"complevel":compression_level,"shuffle":True} for name in names}; ds.to_netcdf(target,encoding=encoding)
+        summary={"variables":names,"compression_level":compression_level,"sizes":dict(ds.sizes)}
+    return result("netcdf_encoding_optimize",summary=summary,artifacts=[{"path":str(target),"type":"application/x-netcdf","size_bytes":target.stat().st_size}])
+
+def dimension_normalize(path: str, variable: str | None, output: str) -> dict[str, Any]:
+    import xarray as xr
+    target=safe_output_path(output)
+    with _decoded_dataset(path) as ds:
+        names=[variable] if variable else list(ds.data_vars); out=ds.copy()
+        for name in names:
+            if name not in out.data_vars: raise ValueError(f"data variable was not found: {name}")
+            da=out[name]; time=next((d for d in da.dims if coordinate_role(d,out[d])=="time"),None); lat=next((d for d in da.dims if coordinate_role(d,out[d])=="latitude"),None); lon=next((d for d in da.dims if coordinate_role(d,out[d])=="longitude"),None); ordered=[d for d in (time,lat,lon) if d]+[d for d in da.dims if d not in {time,lat,lon}]; out[name]=da.transpose(*ordered)
+        out.to_netcdf(target); summary={"variables":names,"sizes":dict(out.sizes)}
+    return result("netcdf_dimension_normalize",summary=summary,artifacts=[{"path":str(target),"type":"application/x-netcdf","size_bytes":target.stat().st_size}])
+
 
 def main() -> int:
-    parser = argparse.ArgumentParser(); parser.add_argument("tool"); parser.add_argument("--input-path"); parser.add_argument("--input-paths-json"); parser.add_argument("--operation"); parser.add_argument("--max-entries",type=int,default=500); parser.add_argument("--dataset-path"); parser.add_argument("--selection-json"); parser.add_argument("--max-values",type=int,default=1000000); parser.add_argument("--output-path"); parser.add_argument("--variable"); parser.add_argument("--target-unit"); parser.add_argument("--time-name"); parser.add_argument("--dimension"); parser.add_argument("--index",type=int); parser.add_argument("--value",type=float); parser.add_argument("--frequency",default="month")
+    parser = argparse.ArgumentParser(); parser.add_argument("tool"); parser.add_argument("--input-path"); parser.add_argument("--input-paths-json"); parser.add_argument("--operation"); parser.add_argument("--max-entries",type=int,default=500); parser.add_argument("--dataset-path"); parser.add_argument("--selection-json"); parser.add_argument("--max-values",type=int,default=1000000); parser.add_argument("--output-path"); parser.add_argument("--variable"); parser.add_argument("--target-unit"); parser.add_argument("--time-name"); parser.add_argument("--dimension"); parser.add_argument("--index",type=int); parser.add_argument("--value",type=float); parser.add_argument("--frequency",default="month"); parser.add_argument("--compression-level",type=int,default=4); parser.add_argument("--vector-path")
     args = parser.parse_args()
     try:
         paths = json.loads(args.input_paths_json) if args.input_paths_json else []
-        functions = {"data_format_inspect":lambda:format_inspect(paths),"hierarchical_store_inspect":lambda:hierarchical_inspect(args.input_path,args.max_entries),"hierarchical_array_extract":lambda:hierarchical_extract(args.input_path,args.dataset_path,json.loads(args.selection_json or "[]"),args.max_values,args.output_path),"cf_semantics_validate":lambda:cf_validate(args.input_path),"spatial_grid_diagnose":lambda:grid_diagnose(args.input_path),"raster_compatibility_validate":lambda:raster_compatibility(paths,args.operation),"eo_product_resolve":lambda:product_resolve(args.input_path),"artifact_scientific_validate":lambda:artifact_validate(args.input_path),"netcdf_time_axis_normalize":lambda:time_axis_normalize(args.input_path,args.time_name),"netcdf_unit_convert":lambda:unit_convert(args.input_path,args.variable,args.target_unit,args.output_path),"netcdf_vertical_slice":lambda:vertical_slice(args.input_path,args.variable,args.dimension,args.index,args.value,args.output_path),"netcdf_climatology":lambda:climatology(args.input_path,args.variable,args.frequency,args.output_path),"netcdf_missing_gap_detect":lambda:missing_gap_detect(args.input_path,args.variable,args.time_name)}
+        functions = {"data_format_inspect":lambda:format_inspect(paths),"hierarchical_store_inspect":lambda:hierarchical_inspect(args.input_path,args.max_entries),"hierarchical_array_extract":lambda:hierarchical_extract(args.input_path,args.dataset_path,json.loads(args.selection_json or "[]"),args.max_values,args.output_path),"cf_semantics_validate":lambda:cf_validate(args.input_path),"spatial_grid_diagnose":lambda:grid_diagnose(args.input_path),"raster_compatibility_validate":lambda:raster_compatibility(paths,args.operation),"eo_product_resolve":lambda:product_resolve(args.input_path),"artifact_scientific_validate":lambda:artifact_validate(args.input_path),"netcdf_time_axis_normalize":lambda:time_axis_normalize(args.input_path,args.time_name),"netcdf_unit_convert":lambda:unit_convert(args.input_path,args.variable,args.target_unit,args.output_path),"netcdf_vertical_slice":lambda:vertical_slice(args.input_path,args.variable,args.dimension,args.index,args.value,args.output_path),"netcdf_climatology":lambda:climatology(args.input_path,args.variable,args.frequency,args.output_path),"netcdf_missing_gap_detect":lambda:missing_gap_detect(args.input_path,args.variable,args.time_name),"netcdf_multi_file_concat":lambda:multi_file_concat(paths,args.dimension,args.variable,args.output_path),"netcdf_multi_file_merge":lambda:multi_file_merge(paths,args.output_path),"netcdf_mask_by_vector":lambda:mask_by_vector(args.input_path,args.vector_path,args.variable,args.output_path),"netcdf_encoding_optimize":lambda:encoding_optimize(args.input_path,args.variable,args.output_path,args.compression_level),"netcdf_dimension_normalize":lambda:dimension_normalize(args.input_path,args.variable,args.output_path)}
         output = functions[args.tool]()
     except Exception as exc:
         output = {"success":False,"answer_ready":True,"operation":args.tool,"error":f"{type(exc).__name__}: {exc}","warnings":[]}

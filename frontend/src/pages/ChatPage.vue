@@ -152,6 +152,7 @@
         </div>
       </div>
     </div>
+    <VersionBadge />
     <ToolPanel ref="toolPanel" :size="toolPanelSize" :sessionId="sessionId" :realTime="realTime"
       :isShare="false"
       @jumpToRealTime="jumpToRealTime" />
@@ -167,6 +168,7 @@ import ChatBox from '../components/ChatBox.vue';
 import ChatMessage from '../components/ChatMessage.vue';
 import * as agentApi from '../api/agent';
 import { Message, MessageContent, ToolContent, StepContent, AttachmentsContent, isConsecutiveAssistant } from '../types/message';
+import VersionBadge from '../components/VersionBadge.vue';
 import {
   StepEventData,
   ToolEventData,
@@ -192,6 +194,7 @@ import { consumePendingChat } from '../composables/usePendingChat'
 import { useAgentProfile } from '../composables/useAgentProfile'
 import { copyToClipboard } from '../utils/dom'
 import {
+  completeRunningSteps,
   failRunningSteps,
   findCurrentTurnRunningStep,
   findCurrentTurnStep,
@@ -475,6 +478,7 @@ const handleEvent = (event: AgentSSEEvent) => {
     handleStepEvent(event.data as StepEventData);
   } else if (event.event === 'done') {
     isLoading.value = false;
+    completeRunningSteps(messages.value, event.data.timestamp);
     eventBus.emit(EVENT_REFRESH_SESSION_LIST);
     const elapsedMs = taskStartedAtMs.value === undefined
       ? undefined

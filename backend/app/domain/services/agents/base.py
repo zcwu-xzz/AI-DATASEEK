@@ -473,12 +473,31 @@ class BaseAgent(ABC):
             completed_tool_results = []
             for tool_call in message.tool_calls:
                 function_name = tool_call["name"]
+                tool_aliases = {
+                    "shell_write": "shell_write_to_process",
+                    "write_stdin": "shell_write_to_process",
+                    "shell_read": "shell_view",
+                }
+                resolved_function_name = tool_aliases.get(function_name, function_name)
+                if resolved_function_name != function_name:
+                    logger.info(
+                        "Resolved model tool alias %s to %s for agent=%s",
+                        function_name,
+                        resolved_function_name,
+                        self.name,
+                    )
+                    function_name = resolved_function_name
+                    tool_call["name"] = resolved_function_name
                 tool_call_id = tool_call["id"] = tool_call["id"] or str(uuid.uuid4())
                 function_args = tool_call["args"]
                 
                 tool = self.get_tool(function_name)
                 if not tool:
-                    yield ErrorEvent(error=f"Unknown tool: {function_name}")
+                    logger.warning(
+                        "Agent %s requested unavailable tool %s; returning a corrective tool message",
+                        self.name,
+                        function_name,
+                    )
                     tool_responses.append(
                         ToolMessage(
                             tool_call_id=tool_call_id,

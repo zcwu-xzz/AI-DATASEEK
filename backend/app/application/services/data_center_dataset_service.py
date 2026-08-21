@@ -215,6 +215,7 @@ class DataCenterDatasetService:
         keywords: Sequence[str],
         storage_directory: str,
         created_by: str,
+        nc_view_url: str | None = None,
         sso_uid: str | None = None,
     ) -> DataCenterDataset:
         normalized_directory = storage_directory.strip()
@@ -266,6 +267,7 @@ class DataCenterDatasetService:
             description=summary.strip(),
             data_type="服务器目录",
             tags=normalized_keywords,
+            nc_view_url=nc_view_url,
             files=[
                 DatasetFile(
                     path=f"sources/{location.location_id}/{mount_name}/{item.relative_path}",

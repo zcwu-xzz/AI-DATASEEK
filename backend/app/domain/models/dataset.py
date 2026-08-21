@@ -49,6 +49,7 @@ class DataCenterDataset(BaseModel):
     data_type: str = ""
     tags: List[str] = Field(default_factory=list)
     preview_url: str = ""
+    nc_view_url: str | None = None
     files: List[DatasetFile] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     locations: List[DatasetLocation] = Field(default_factory=list)

@@ -4,10 +4,11 @@ from os import PathLike, fspath
 from pathlib import PurePosixPath
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from app.domain.models.dataset import DatasetStorageType
 from app.domain.models.session import SessionStatus
+from app.domain.models.data_product import DataProduct
 
 
 _OMIT_METADATA_VALUE = object()
@@ -199,6 +200,7 @@ class DataCenterDatasetResponse(BaseModel):
     data_type: str
     tags: List[str] = Field(default_factory=list)
     preview_url: str = ""
+    ncViewUrl: str | None = None
     files: List[DatasetFileResponse] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     locations: List[DatasetLocationResponse] = Field(default_factory=list)
@@ -206,6 +208,66 @@ class DataCenterDatasetResponse(BaseModel):
     created_by: str | None = None
     created_at: datetime
     updated_at: datetime
+    data_products: List["DataProductResponse"] = Field(default_factory=list)
+
+
+class DataProductFileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    file_id: str
+    filename: str
+    relative_path: str
+    role: str
+    content_type: str | None = None
+    size: int = 0
+    source_artifact_id: str | None = None
+    source_tool: str | None = None
+    is_primary: bool = False
+    created_at: datetime | None = None
+
+
+class DataProductResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    product_id: str
+    dataset_id: str
+    source_session_id: str
+    name: str
+    description: str
+    generation_method: str
+    created_by: str
+    owner_id: str | None = None
+    version: int
+    files: List[DataProductFileResponse] = Field(default_factory=list)
+    directories: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class DataProductCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=4000)
+    generation_method: str = Field(default="agent_tool", max_length=100)
+    selected_file_ids: List[str] = Field(min_length=1, max_length=200)
+    primary_file_id: str | None = None
+
+
+class DataProductUpdateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=4000)
+    generation_method: str = Field(default="agent_tool", min_length=1, max_length=200)
+    created_by: str = Field(min_length=1, max_length=200)
+    directories: List[str] = Field(default_factory=list, max_length=200)
+    files: List[DataProductFileResponse] = Field(default_factory=list, max_length=500)
+
+
+class DataProductDraftResponse(BaseModel):
+    source_session_id: str
+    suggested_name: str
+    suggested_description: str
+    generation_method: str
+    files: List[DataProductFileResponse] = Field(default_factory=list)
 
 
 class DataCenterDatasetCatalogResponse(BaseModel):
@@ -222,6 +284,7 @@ class DatasetSubmissionRequest(BaseModel):
     keywords: List[str] = Field(min_length=1, max_length=100)
     storage_directory: str = Field(min_length=1, max_length=4096)
     token: str = Field(min_length=1, max_length=4096)
+    ncViewUrl: HttpUrl | None = None
 
     @field_validator("external_id", "name", "summary", "token")
     @classmethod
@@ -280,6 +343,7 @@ def dataset_response(
     include_file_paths: bool = True,
 ) -> DataCenterDatasetResponse:
     payload = value.model_dump()
+    payload["ncViewUrl"] = value.nc_view_url
     public_metadata = _sanitize_public_metadata(value.metadata)
     payload["metadata"] = (
         {} if public_metadata is _OMIT_METADATA_VALUE else public_metadata

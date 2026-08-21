@@ -61,6 +61,7 @@ def _submission_request() -> DatasetSubmissionRequest:
         keywords=["science"],
         storage_directory="/srv/datasets/example",
         token="sso-token",
+        ncViewUrl="https://ncview.example.com/viewer?id=external-1",
     )
 
 
@@ -98,6 +99,7 @@ async def test_submission_route_allows_admin_and_passes_one_directory(monkeypatc
         keywords=["science"],
         storage_directory="/srv/datasets/example",
         created_by="owner-a",
+        nc_view_url="https://ncview.example.com/viewer?id=external-1",
         sso_uid="sso-user-1",
     )
     assert response.data is not None
