@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_runner_discovers_builtin_scientific_tools():
     registry = load_registry(ROOT / "tools")
 
-    assert len(registry) == 107
+    assert len(registry) >= 117
     assert "scientific_inspect" in registry
     assert "scientific_region_timeseries" in registry
     assert "geoscience_collection_inspect" in registry
@@ -24,6 +24,16 @@ def test_runner_discovers_builtin_scientific_tools():
     assert "geodata_product_package" in registry
     assert "netcdf_multi_file_concat" in registry
     assert "raster_calculator" in registry
+    assert "netcdf_subset" in registry
+    assert "netcdf_time_aggregate" in registry
+    assert "netcdf_regrid" in registry
+    assert "netcdf_collection_diagnose" in registry
+    assert "raster_band_semantics" in registry
+    assert "raster_index" in registry
+    assert "raster_rgb_composite" in registry
+    assert "shapefile_package_validate" in registry
+    assert "vector_attribute_filter" in registry
+    assert "vector_geometry_repair" in registry
 
 
 def test_runner_rejects_duplicate_names(tmp_path):

@@ -25,6 +25,16 @@ from scripts.geoscience_ops import (
     raster_reclassify,
     vector_schema_profile,
     vector_topology_validate,
+    netcdf_subset,
+    netcdf_time_aggregate,
+    netcdf_regrid,
+    netcdf_collection_diagnose,
+    raster_band_semantics,
+    raster_index,
+    raster_rgb_composite,
+    shapefile_package_validate,
+    vector_attribute_filter,
+    vector_geometry_repair,
 )
 
 
@@ -48,6 +58,26 @@ def test_collection_quality_and_grid_compare(tmp_path):
     assert inspected["file_count"] == 2
     assert quality_check(Namespace(input_path=str(first)))["checks"]["temperature"]["maximum"] == 11.0
     assert grid_compare(Namespace(input_paths=[str(first), str(second)]))["compatible"] is True
+
+def test_extended_scientific_operators(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_DATASEEK_OUTPUT_ROOT", str(tmp_path))
+    source = tmp_path / "source.nc"
+    xr.Dataset({"temperature": (("time", "latitude", "longitude"), np.arange(24, dtype="float32").reshape(2, 3, 4))}, coords={"time": [np.datetime64("2020-01-01"), np.datetime64("2020-02-01")], "latitude": [10., 11., 12.], "longitude": [100., 101., 102., 103.]}).to_netcdf(source, engine="h5netcdf")
+    assert netcdf_subset(Namespace(input_path=str(source), output_path=str(tmp_path / "subset.nc"), variable="temperature", slices=None, bbox="[100,10,102,12]"))["success"]
+    assert netcdf_time_aggregate(Namespace(input_path=str(source), output_path=str(tmp_path / "agg.nc"), variable="temperature", frequency="MS", method="mean"))["success"]
+    assert netcdf_regrid(Namespace(input_path=str(source), output_path=str(tmp_path / "grid.nc"), variable="temperature", resolution=1.0, method="linear"))["success"]
+    assert netcdf_collection_diagnose(Namespace(input_paths=[str(source)]))["total_time_count"] == 2
+    raster = tmp_path / "multi.tif"
+    profile = {"driver":"GTiff","width":4,"height":3,"count":3,"dtype":"float32","crs":"EPSG:4326","transform":from_origin(100,13,1,1)}
+    with rasterio.open(raster,"w",**profile) as dst:
+        dst.write(np.ones((3,3,4),dtype="float32")); dst.set_band_description(1,"red")
+    assert raster_band_semantics(Namespace(input_path=str(raster)))["bands"][0]["semantic_role"] == "red"
+    assert raster_index(Namespace(input_path=str(raster), output_path=str(tmp_path / "idx.tif"), band_a=1, band_b=2, index_name="ndvi"))["success"]
+    assert raster_rgb_composite(Namespace(input_path=str(raster), output_path=str(tmp_path / "rgb.tif"), red=1, green=2, blue=3))["success"]
+    vector = tmp_path / "points.geojson"
+    gpd.GeoDataFrame({"value":[1,2]}, geometry=[box(100,11,101,12), box(101,11,102,12)], crs="EPSG:4326").to_file(vector, driver="GeoJSON")
+    assert vector_attribute_filter(Namespace(input_path=str(vector), output_path=str(tmp_path / "filtered.geojson"), expression="value > 1"))["output_features"] == 1
+    assert vector_geometry_repair(Namespace(input_path=str(vector), output_path=str(tmp_path / "repaired.geojson")))["success"]
 
 
 def test_raster_stack_sample_and_validate(tmp_path, monkeypatch):

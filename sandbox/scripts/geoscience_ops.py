@@ -455,6 +455,88 @@ def raster_scale_dtype_convert(args: argparse.Namespace) -> dict[str, Any]:
         with rasterio.open(target,"w",**profile) as dst: dst.write(data.filled(nodata).astype(dtype))
     return result("raster_scale_dtype_convert",dtype=str(dtype),scale=args.scale,offset=args.offset,nodata=nodata,artifacts=[{"path":str(target),"type":"image/tiff","size_bytes":target.stat().st_size}])
 
+def netcdf_subset(args: argparse.Namespace) -> dict[str, Any]:
+    """Subset by explicit dimension slices; bbox/time are optional and never guessed."""
+    with open_nc(Path(args.input_path)) as ds:
+        var = choose_var(ds, args.variable)
+        dims = json.loads(args.slices) if args.slices else {}
+        for dim, spec in dims.items():
+            if dim not in ds.dims: raise GeoScienceError(f"unknown dimension: {dim}")
+            if not isinstance(spec, list) or len(spec) not in (1, 2): raise GeoScienceError(f"slice for {dim} must be [value] or [start,end]")
+            ds = ds.sel({dim: spec[0] if len(spec) == 1 else slice(spec[0], spec[1])})
+        if args.bbox:
+            west, south, east, north = json.loads(args.bbox)
+            lon = next((n for n,v in ds.coords.items() if role(n,v)=="longitude"), None)
+            lat = next((n for n,v in ds.coords.items() if role(n,v)=="latitude"), None)
+            if not lon or not lat: raise GeoScienceError("unable to identify latitude/longitude coordinates")
+            ds = ds.sel({lon: slice(west, east), lat: slice(south, north)})
+        target = output_path(args.output_path); ds.to_netcdf(target)
+        return result("netcdf_subset", variable=var, dimensions={k:int(v) for k,v in ds.sizes.items()}, artifacts=[{"path":str(target),"type":"application/x-netcdf","size_bytes":target.stat().st_size}])
+
+def netcdf_time_aggregate(args: argparse.Namespace) -> dict[str, Any]:
+    with open_nc(Path(args.input_path)) as ds:
+        var = choose_var(ds, args.variable); time = next((n for n,v in ds.coords.items() if role(n,v)=="time"), None)
+        if not time: raise GeoScienceError("time coordinate not found")
+        grouped = getattr(ds[var].resample({time: args.frequency}), args.method)()
+        target = output_path(args.output_path); grouped.to_dataset(name=var).to_netcdf(target)
+        return result("netcdf_time_aggregate", variable=var, time_dimension=time, frequency=args.frequency, method=args.method, artifacts=[{"path":str(target),"type":"application/x-netcdf","size_bytes":target.stat().st_size}])
+
+def netcdf_regrid(args: argparse.Namespace) -> dict[str, Any]:
+    with open_nc(Path(args.input_path)) as ds:
+        var = choose_var(ds, args.variable); lon = next((n for n,v in ds.coords.items() if role(n,v)=="longitude"), None); lat = next((n for n,v in ds.coords.items() if role(n,v)=="latitude"), None)
+        if not lon or not lat: raise GeoScienceError("unable to identify latitude/longitude coordinates")
+        lons = np.arange(float(ds[lon].min()), float(ds[lon].max()) + args.resolution/2, args.resolution); lats = np.arange(float(ds[lat].min()), float(ds[lat].max()) + args.resolution/2, args.resolution)
+        out = ds.interp({lon:lons, lat:lats}, method=args.method); target=output_path(args.output_path); out.to_netcdf(target)
+        return result("netcdf_regrid", variable=var, longitude=lon, latitude=lat, resolution=args.resolution, method=args.method, artifacts=[{"path":str(target),"type":"application/x-netcdf","size_bytes":target.stat().st_size}])
+
+def netcdf_collection_diagnose(args: argparse.Namespace) -> dict[str, Any]:
+    paths=[Path(p) for p in args.input_paths]; report=[]; seen=[]
+    for p in paths:
+        with open_nc(p) as ds:
+            times=next((n for n,v in ds.coords.items() if role(n,v)=="time"),None); values=ds[times].values.tolist() if times else []
+            report.append({"file":p.name,"dimensions":{k:int(v) for k,v in ds.sizes.items()},"variables":list(ds.data_vars),"time_count":len(values),"time_start":str(values[0]) if values else None,"time_end":str(values[-1]) if values else None}); seen.extend([str(v) for v in values])
+    duplicates=len(seen)-len(set(seen)); return result("netcdf_collection_diagnose", files=report, duplicate_time_count=duplicates, total_time_count=len(seen))
+
+def raster_band_semantics(args: argparse.Namespace) -> dict[str, Any]:
+    with rasterio.open(args.input_path) as src:
+        bands=[]
+        for i in range(1,src.count+1):
+            desc=src.descriptions[i-1] or ""; tags=src.tags(i); text=" ".join([desc, str(tags)]).lower(); role_name=None
+            for key, names in {"blue":["blue","b1","band 1"],"green":["green","b2","band 2"],"red":["red","b3","band 3"],"nir":["nir","near infrared","b4","band 4"],"swir1":["swir1","swir-1"],"swir2":["swir2","swir-2"]}.items():
+                if any(n in text for n in names): role_name=key; break
+            bands.append({"band":i,"description":desc,"tags":tags,"semantic_role":role_name})
+        return result("raster_band_semantics",count=src.count,bands=bands,crs=str(src.crs) if src.crs else None)
+
+def raster_index(args: argparse.Namespace) -> dict[str, Any]:
+    with rasterio.open(args.input_path) as src:
+        if args.band_a<1 or args.band_b<1 or args.band_a>src.count or args.band_b>src.count: raise GeoScienceError("band out of range")
+        a=src.read(args.band_a,masked=True).astype("float64"); b=src.read(args.band_b,masked=True).astype("float64"); denom=a+b; out=np.ma.masked_where(denom==0,(a-b)/denom); target=output_path(args.output_path); profile=src.profile.copy(); profile.update(count=1,dtype="float32",nodata=-9999.0,compress="deflate")
+        with rasterio.open(target,"w",**profile) as dst: dst.write(out.filled(-9999.0).astype("float32"),1); dst.set_band_description(1,args.index_name)
+        return result("raster_index",index=args.index_name,band_a=args.band_a,band_b=args.band_b,valid_pixels=int((~np.ma.getmaskarray(out)).sum()),artifacts=[{"path":str(target),"type":"image/tiff","size_bytes":target.stat().st_size}])
+
+def raster_rgb_composite(args: argparse.Namespace) -> dict[str, Any]:
+    with rasterio.open(args.input_path) as src:
+        indexes=[args.red,args.green,args.blue]
+        if any(i<1 or i>src.count for i in indexes): raise GeoScienceError("RGB band out of range")
+        arr=np.stack([src.read(i,masked=True).filled(0).astype("float32") for i in indexes]); lo=np.percentile(arr,2,axis=(1,2),keepdims=True); hi=np.percentile(arr,98,axis=(1,2),keepdims=True); rgb=np.clip((arr-lo)/(hi-lo+1e-12)*255,0,255).astype("uint8"); target=output_path(args.output_path); profile=src.profile.copy(); profile.update(count=3,dtype="uint8",nodata=0,compress="deflate")
+        with rasterio.open(target,"w",**profile) as dst: dst.write(rgb)
+        return result("raster_rgb_composite",bands=indexes,stretch=[2,98],artifacts=[{"path":str(target),"type":"image/tiff","size_bytes":target.stat().st_size}])
+
+def shapefile_package_validate(args: argparse.Namespace) -> dict[str, Any]:
+    path=Path(args.input_path); base=path.with_suffix(""); required=[base.with_suffix(s) for s in (".shp",".shx",".dbf")]; optional=[base.with_suffix(s) for s in (".prj",".cpg")]; missing=[p.suffix for p in required if not p.exists()]
+    if missing: raise GeoScienceError("missing required Shapefile components: "+", ".join(missing))
+    gdf=gpd.read_file(path); return result("shapefile_package_validate",base=base.name,required_components={p.suffix:p.stat().st_size for p in required},optional_components={p.suffix:p.stat().st_size for p in optional if p.exists()},crs=str(gdf.crs) if gdf.crs else None,feature_count=len(gdf),encoding=(optional[1].read_text(errors="ignore").strip() if optional[1].exists() else None))
+
+def vector_attribute_filter(args: argparse.Namespace) -> dict[str, Any]:
+    gdf=gpd.read_file(args.input_path); expression=args.expression
+    try: selected=gdf.query(expression)
+    except Exception as exc: raise GeoScienceError(f"invalid attribute expression: {exc}") from exc
+    target=output_path(args.output_path); suffix=target.suffix.lower(); driver="ESRI Shapefile" if suffix==".shp" else "GeoJSON"; selected.to_file(target,driver=driver)
+    return result("vector_attribute_filter",expression=expression,input_features=len(gdf),output_features=len(selected),artifacts=[{"path":str(target),"type":"application/geo+json" if driver=="GeoJSON" else "application/octet-stream","size_bytes":target.stat().st_size}])
+
+def vector_geometry_repair(args: argparse.Namespace) -> dict[str, Any]:
+    gdf=gpd.read_file(args.input_path); before=int((~gdf.geometry.is_valid).sum()); gdf=gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty].copy(); gdf.geometry=gdf.geometry.make_valid(); target=output_path(args.output_path); gdf.to_file(target,driver="GeoJSON"); return result("vector_geometry_repair",invalid_before=before,feature_count=len(gdf),artifacts=[{"path":str(target),"type":"application/geo+json","size_bytes":target.stat().st_size}])
+
 def main() -> int:
     p = argparse.ArgumentParser(); sub = p.add_subparsers(dest="op", required=True)
     def common(name: str, input_paths=True):
@@ -497,6 +579,16 @@ def main() -> int:
     c = sub.add_parser("raster-nodata-normalize"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--nodata",type=float,default=-9999.0); c.add_argument("--minimum",type=float); c.add_argument("--maximum",type=float)
     c = sub.add_parser("raster-reclassify"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("rules"); c.add_argument("--band",type=int,default=1); c.add_argument("--default",type=int,default=0); c.add_argument("--nodata",type=int,default=-9999)
     c = sub.add_parser("raster-scale-dtype-convert"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--dtype",choices=("uint8","uint16","int16","int32","float32","float64"),required=True); c.add_argument("--scale",type=float,default=1.0); c.add_argument("--offset",type=float,default=0.0); c.add_argument("--nodata",type=float)
+    c = sub.add_parser("netcdf-subset"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--variable"); c.add_argument("--slices"); c.add_argument("--bbox")
+    c = sub.add_parser("netcdf-time-aggregate"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--variable"); c.add_argument("--frequency",default="MS"); c.add_argument("--method",choices=("mean","sum","min","max","median"),default="mean")
+    c = sub.add_parser("netcdf-regrid"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--variable"); c.add_argument("--resolution",type=float,required=True); c.add_argument("--method",choices=("nearest","linear"),default="linear")
+    c = sub.add_parser("netcdf-collection-diagnose"); c.add_argument("input_paths",nargs="+")
+    c = sub.add_parser("raster-band-semantics"); c.add_argument("input_path")
+    c = sub.add_parser("raster-index"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--band-a",type=int,required=True); c.add_argument("--band-b",type=int,required=True); c.add_argument("--index-name",default="normalized_difference")
+    c = sub.add_parser("raster-rgb-composite"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("--red",type=int,required=True); c.add_argument("--green",type=int,required=True); c.add_argument("--blue",type=int,required=True)
+    c = sub.add_parser("shapefile-package-validate"); c.add_argument("input_path")
+    c = sub.add_parser("vector-attribute-filter"); c.add_argument("input_path"); c.add_argument("output_path"); c.add_argument("expression")
+    c = sub.add_parser("vector-geometry-repair"); c.add_argument("input_path"); c.add_argument("output_path")
     a = p.parse_args()
     try:
         if a.op == "collection-inspect": r = collection_inspect(a)
@@ -535,6 +627,16 @@ def main() -> int:
         elif a.op == "raster-nodata-normalize": r = raster_nodata_normalize(a)
         elif a.op == "raster-reclassify": r = raster_reclassify(a)
         elif a.op == "raster-scale-dtype-convert": r = raster_scale_dtype_convert(a)
+        elif a.op == "netcdf-subset": r = netcdf_subset(a)
+        elif a.op == "netcdf-time-aggregate": r = netcdf_time_aggregate(a)
+        elif a.op == "netcdf-regrid": r = netcdf_regrid(a)
+        elif a.op == "netcdf-collection-diagnose": r = netcdf_collection_diagnose(a)
+        elif a.op == "raster-band-semantics": r = raster_band_semantics(a)
+        elif a.op == "raster-index": r = raster_index(a)
+        elif a.op == "raster-rgb-composite": r = raster_rgb_composite(a)
+        elif a.op == "shapefile-package-validate": r = shapefile_package_validate(a)
+        elif a.op == "vector-attribute-filter": r = vector_attribute_filter(a)
+        elif a.op == "vector-geometry-repair": r = vector_geometry_repair(a)
         else: r = artifact_validate(a)
     except Exception as exc:
         r = {"success": False, "operation": a.op, "error": f"{type(exc).__name__}: {exc}"}

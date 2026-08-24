@@ -1,6 +1,7 @@
 """Adapter for the geoscience plugin command line."""
 from __future__ import annotations
 import sys
+import json
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +45,16 @@ OPS = {
     "raster_nodata_normalize": "raster-nodata-normalize",
     "raster_reclassify": "raster-reclassify",
     "raster_scale_dtype_convert": "raster-scale-dtype-convert",
+    "netcdf_subset": "netcdf-subset",
+    "netcdf_time_aggregate": "netcdf-time-aggregate",
+    "netcdf_regrid": "netcdf-regrid",
+    "netcdf_collection_diagnose": "netcdf-collection-diagnose",
+    "raster_band_semantics": "raster-band-semantics",
+    "raster_index": "raster-index",
+    "raster_rgb_composite": "raster-rgb-composite",
+    "shapefile_package_validate": "shapefile-package-validate",
+    "vector_attribute_filter": "vector-attribute-filter",
+    "vector_geometry_repair": "vector-geometry-repair",
 }
 
 def build_command(tool_name: str, arguments: dict[str, Any]) -> list[str]:
@@ -126,6 +137,23 @@ def build_command(tool_name: str, arguments: dict[str, Any]) -> list[str]:
         command += [str(arguments["input_path"]),str(arguments["output_path"]),"--dtype",str(arguments["dtype"]),"--scale",str(arguments.get("scale",1.0)),"--offset",str(arguments.get("offset",0.0))]
         if arguments.get("nodata") is not None: command += ["--nodata",str(arguments["nodata"])]
         return command
+    if tool_name == "netcdf_subset":
+        command += [str(arguments["input_path"]), str(arguments["output_path"])]
+        if arguments.get("variable"): command += ["--variable", str(arguments["variable"])]
+        if arguments.get("slices"): command += ["--slices", json.dumps(arguments["slices"], separators=(",", ":"))]
+        if arguments.get("bbox"): command += ["--bbox", json.dumps(arguments["bbox"], separators=(",", ":"))]
+        return command
+    if tool_name == "netcdf_time_aggregate":
+        return command + [str(arguments["input_path"]), str(arguments["output_path"]), "--frequency", str(arguments.get("frequency", "MS")), "--method", str(arguments.get("method", "mean"))] + (["--variable", str(arguments["variable"])] if arguments.get("variable") else [])
+    if tool_name == "netcdf_regrid":
+        return command + [str(arguments["input_path"]), str(arguments["output_path"]), "--resolution", str(arguments["resolution"]), "--method", str(arguments.get("method", "linear"))] + (["--variable", str(arguments["variable"])] if arguments.get("variable") else [])
+    if tool_name == "netcdf_collection_diagnose": return command + [*map(str, arguments["input_paths"])]
+    if tool_name == "raster_band_semantics": return command + [str(arguments["input_path"])]
+    if tool_name == "raster_index": return command + [str(arguments["input_path"]), str(arguments["output_path"]), "--band-a", str(arguments["band_a"]), "--band-b", str(arguments["band_b"]), "--index-name", str(arguments.get("index_name", "normalized_difference"))]
+    if tool_name == "raster_rgb_composite": return command + [str(arguments["input_path"]), str(arguments["output_path"]), "--red", str(arguments["red"]), "--green", str(arguments["green"]), "--blue", str(arguments["blue"])]
+    if tool_name == "shapefile_package_validate": return command + [str(arguments["input_path"])]
+    if tool_name == "vector_attribute_filter": return command + [str(arguments["input_path"]), str(arguments["output_path"]), str(arguments["expression"])]
+    if tool_name == "vector_geometry_repair": return command + [str(arguments["input_path"]), str(arguments["output_path"])]
     for name, value in arguments.items():
         if value is None or name == "timeout_seconds": continue
         flag = "--" + name.replace("_", "-") if name.startswith("input_") or name in {"variable", "from_unit", "to_unit", "bit", "input_dir", "input_paths"} else None
