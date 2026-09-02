@@ -55,6 +55,8 @@ export interface CompletionAdviceData {
   recommendations: string[];
   is_skill_candidate: boolean;
   skill_reason: string;
+  shapefile_preview_available?: boolean;
+  molecular_preview_available?: boolean;
 }
 
 export interface WaitEventData extends BaseEventData {

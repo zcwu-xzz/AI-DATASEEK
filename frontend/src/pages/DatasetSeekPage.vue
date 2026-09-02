@@ -406,6 +406,24 @@
               </div>
             </div>
             <button
+              v-if="completionAdvice?.shapefile_preview_available && !isLoading"
+              type="button"
+              class="mt-3 flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--border-main)] bg-[var(--background-menu-white)] px-4 py-3 text-left text-sm transition-colors hover:border-[#6b927f] hover:bg-[#f6faf8] dark:hover:bg-[#27342f]"
+              @click="openShapefilePreview"
+            >
+              <span>是否进行Shapefile可视化</span>
+              <ChevronRight class="size-4 shrink-0 text-[var(--icon-tertiary)]" />
+            </button>
+            <button
+              v-if="completionAdvice?.molecular_preview_available && !isLoading"
+              type="button"
+              class="mt-3 flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--border-main)] bg-[var(--background-menu-white)] px-4 py-3 text-left text-sm transition-colors hover:border-[#6b927f] hover:bg-[#f6faf8] dark:hover:bg-[#27342f]"
+              @click="openMolecularPreview"
+            >
+              <span>是否进行分子结构3D可视化</span>
+              <ChevronRight class="size-4 shrink-0 text-[var(--icon-tertiary)]" />
+            </button>
+            <button
               v-if="showNcViewSuggestion"
               type="button"
               class="mt-4 flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--border-main)] bg-[var(--background-menu-white)] px-4 py-3 text-left text-sm transition-colors hover:border-[#6b927f] hover:bg-[#f6faf8] dark:hover:bg-[#27342f]"
@@ -497,7 +515,7 @@ import { createSession, getSession, chatWithSession, stopSession } from '@/api/a
 import { API_CONFIG } from '@/api/client';
 import { deleteDatasetDataProduct, downloadDatasetDataProduct, generateDatasetSuggestedQuestions, getDataCenterDataset, listDatasetChatSessions, listDatasetDataProducts, updateDatasetDataProduct, type DataCenterDataset, type DataCenterDatasetFile, type DataProduct, type DataProductFile, type DatasetChatSession } from '@/api/dataset';
 import { createFileSignedUrl } from '@/api/file';
-import type { FileInfo } from '@/api/file';
+import { prepareShapefilePreview, type FileInfo } from '@/api/file';
 import { getSkillPreferences } from '@/api/skill';
 import { useAgentProfile } from '@/composables/useAgentProfile';
 import { useFilePanel } from '@/composables/useFilePanel';
@@ -564,6 +582,7 @@ const suggestedQuestions = ref<string[]>([]);
 const suggestedQuestionsLoading = ref(false);
 const suggestedQuestionsError = ref('');
 const completionAdvice = ref<CompletionAdviceData>();
+const shapefilePreviewLoading = ref(false);
 const historyOpen = ref(false);
 const historyMenuRef = ref<HTMLElement>();
 const historyLoading = ref(false);
@@ -1011,6 +1030,38 @@ function artifactPreviewUrl(file: FileInfo): string {
   if (!file.file_url) return '';
   if (/^https?:\/\//i.test(file.file_url)) return file.file_url;
   return `${API_CONFIG.host}${file.file_url}`;
+}
+
+async function openShapefilePreview() {
+  if (shapefilePreviewLoading.value) return;
+  const outputFiles = messages.value.flatMap(message => message.type === 'attachments' && (message.content as AttachmentsContent).role === 'assistant' ? attachmentFiles(message) : []);
+  const candidates = outputFiles.filter(file => /\.(?:shp|zip|rar)$/i.test(file.filename));
+  const source = candidates[candidates.length - 1];
+  if (!source) return;
+  shapefilePreviewLoading.value = true;
+  try {
+    if (/\.shp$/i.test(source.filename)) {
+      const stem = source.filename.replace(/\.[^.]+$/, '').toLowerCase();
+      showFilePanel(source, outputFiles.filter(file => file.filename.replace(/\.[^.]+$/, '').toLowerCase() === stem));
+      return;
+    }
+    const prepared = await prepareShapefilePreview(source.file_id);
+    const files = prepared.layers.flatMap(layer => layer.components);
+    const layer = prepared.layers.find(item => item.complete) || prepared.layers[0];
+    const selected = layer?.components.find(file => /\.shp$/i.test(file.filename));
+    if (selected) showFilePanel(selected, files);
+  } catch (error) {
+    showErrorToast(error instanceof Error ? error.message : 'Shapefile预览准备失败');
+  } finally {
+    shapefilePreviewLoading.value = false;
+  }
+}
+
+function openMolecularPreview() {
+  const outputFiles = messages.value.flatMap(message => message.type === 'attachments' && (message.content as AttachmentsContent).role === 'assistant' ? attachmentFiles(message) : []);
+  const candidates = outputFiles.filter(file => /\.(?:cif|pdb|ent|mol|sdf|xyz|mol2|vasp)$/i.test(file.filename) || /(?:^|[\\/])(poscar|contcar)$/i.test(file.filename));
+  const source = candidates[candidates.length - 1];
+  if (source) showFilePanel(source, candidates);
 }
 
 async function loadSuggestedQuestions() {

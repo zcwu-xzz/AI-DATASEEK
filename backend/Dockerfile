@@ -12,7 +12,7 @@ RUN sed -i 's|http://deb.debian.org|http://mirrors.aliyun.com|g' \
         'Acquire::https::Timeout "60";' \
         > /etc/apt/apt.conf.d/80-retries && \
     apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
+    apt-get install -y --no-install-recommends curl ca-certificates p7zip-full && \
     rm -rf /var/lib/apt/lists/*
 
 # Install nodejs

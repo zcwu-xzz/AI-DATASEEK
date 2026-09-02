@@ -27,7 +27,7 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     )
 
     names = _tool_names(toolkit)
-    assert len(names) == 107
+    assert len(names) == 280
     assert "scientific_inspect" in names
     assert "scientific_netcdf_visualize" in names
     assert "geoscience_collection_inspect" in names
@@ -49,6 +49,19 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     assert "geodata_product_package" in names
     assert "netcdf_multi_file_concat" in names
     assert "raster_calculator" in names
+    assert "pxp_inspect" in names
+    assert "pxp_extract_wave" in names
+    assert "pxp_peak_fit" in names
+    assert "pxp_visualize" in names
+    assert "pxp_extract_experiment_conditions" in names
+    assert "pxp_multipeak_deconvolution" in names
+    assert "pxp_reproducible_package" in names
+    assert "space_fits_inspect" in names
+    assert "space_tle_propagate" in names
+    assert "sequence_inspect" in names
+    assert "sequence_fastqc_report" in names
+    assert "blast_hit_visualize" in names
+    assert "sequence_quality_heatmap" in names
     assert names == toolkit.dataset_fast_path_tool_names
     inspect = next(
         item for item in toolkit.get_tools()

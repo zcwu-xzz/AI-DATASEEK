@@ -34,6 +34,9 @@ def test_runner_discovers_builtin_scientific_tools():
     assert "shapefile_package_validate" in registry
     assert "vector_attribute_filter" in registry
     assert "vector_geometry_repair" in registry
+    assert "space_fits_inspect" in registry
+    assert "space_quality_report" in registry
+    assert "sequence_inspect" in registry
 
 
 def test_runner_rejects_duplicate_names(tmp_path):

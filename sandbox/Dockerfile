@@ -156,12 +156,23 @@ COPY sandbox/scripts/geoscience_ops.py /usr/local/lib/ai-dataseek/
 COPY tools /opt/ai-dataseek/tools
 
 # Tool-specific dependencies stay with their plugins so adding a plugin does
-# not invalidate and reinstall the full scientific runtime.
-RUN uv pip install --no-cache \
+# not invalidate and reinstall the full scientific runtime. FASTA/FASTQ and
+# BLAST tools require Biopython at image build time because sandboxes cannot
+# install packages at task runtime.
+RUN test -s /opt/ai-dataseek/tools/sequence/requirements.txt && \
+    grep -Eq '^biopython([<=>]|$)' /opt/ai-dataseek/tools/sequence/requirements.txt && \
+    uv pip install --no-cache \
     --index-url https://mirrors.aliyun.com/pypi/simple/ \
     -r /opt/ai-dataseek/tools/documents/requirements.txt \
     -r /opt/ai-dataseek/tools/presentations/requirements.txt \
-    -r /opt/ai-dataseek/tools/tabular/requirements.txt
+    -r /opt/ai-dataseek/tools/tabular/requirements.txt \
+    -r /opt/ai-dataseek/tools/chemistry/requirements.txt \
+    -r /opt/ai-dataseek/tools/xrd/requirements.txt \
+    -r /opt/ai-dataseek/tools/jip/requirements.txt \
+    -r /opt/ai-dataseek/tools/molecular/requirements.txt \
+    -r /opt/ai-dataseek/tools/pxp/requirements.txt \
+    -r /opt/ai-dataseek/tools/sequence/requirements.txt \
+    -r /opt/ai-dataseek/tools/space/requirements.txt
 
 # Give agents one deterministic command for nested dataset archives instead of
 # spending model turns discovering and chaining format-specific extractors.
@@ -195,7 +206,7 @@ RUN python /usr/local/lib/ai-dataseek/install_noto_cjk_sc.py && \
 # Fail the image build if task commands would see a different Python/pip pair
 # or if the preinstalled scientific stack is incomplete.
 RUN python -m pip --version && \
-    python -c "import matplotlib, numpy, openpyxl, pandas, rarfile, rasterio, seaborn, xlrd; from PIL import Image; from osgeo import gdal; assert tuple(map(int, rasterio.__version__.split('.')[:2])) >= (1, 4); assert int(numpy.__version__.split('.')[0]) < 2; assert gdal.VersionInfo(); print('scientific stack ready', 'rasterio=' + rasterio.__version__, 'rasterio_gdal=' + rasterio.__gdal_version__, 'system_gdal=' + gdal.VersionInfo())" && \
+    python -c "import Bio, matplotlib, numpy, openpyxl, pandas, rarfile, rasterio, seaborn, xlrd; from PIL import Image; from osgeo import gdal; assert tuple(map(int, rasterio.__version__.split('.')[:2])) >= (1, 4); assert int(numpy.__version__.split('.')[0]) < 2; assert gdal.VersionInfo(); print('scientific stack ready', 'biopython=' + Bio.__version__, 'rasterio=' + rasterio.__version__, 'rasterio_gdal=' + rasterio.__gdal_version__, 'system_gdal=' + gdal.VersionInfo())" && \
     command -v ncdump && \
     command -v h5dump && \
     command -v projinfo && \

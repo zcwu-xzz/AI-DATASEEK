@@ -17,6 +17,36 @@ export interface FileInfo {
   file_url?: string;
 }
 
+export interface ShapefilePreviewLayer {
+  name: string;
+  relative_path: string;
+  complete: boolean;
+  missing_components: string[];
+  components: FileInfo[];
+}
+
+export async function prepareShapefilePreview(fileId: string): Promise<{ source_name: string; layers: ShapefilePreviewLayer[] }> {
+  const response = await apiClient.post<ApiResponse<{ source_name: string; layers: ShapefilePreviewLayer[] }>>('/files/shapefile-preview/prepare', { file_id: fileId });
+  return response.data.data;
+}
+
+export interface MolecularPreviewPreparation {
+  source_name: string;
+  source_format: 'cif' | 'pdb' | 'sdf' | 'xyz' | 'mol2' | 'vasp';
+  content_type?: string;
+  size_bytes?: number;
+  periodic: boolean;
+  supports_unit_cell: boolean;
+}
+
+export async function prepareMolecularPreview(fileId: string): Promise<MolecularPreviewPreparation> {
+  const response = await apiClient.post<ApiResponse<MolecularPreviewPreparation>>(
+    '/files/molecular-preview/prepare',
+    { file_id: fileId },
+  );
+  return response.data.data;
+}
+
 export interface LargeUploadInitResponse {
   upload_id: string;
   file_id: string;

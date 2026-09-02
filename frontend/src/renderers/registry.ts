@@ -5,6 +5,7 @@ import ObjFilePreview from '@/components/filePreviews/ObjFilePreview.vue';
 import TiffFilePreview from '@/components/filePreviews/TiffFilePreview.vue';
 import ShapefilePreview from '@/components/filePreviews/ShapefilePreview.vue';
 import HtmlFilePreview from '@/components/filePreviews/HtmlFilePreview.vue';
+import MolecularStructurePreview from '@/components/filePreviews/MolecularStructurePreview.vue';
 import type { RendererInfo } from '@/api/renderer';
 
 export type RendererKind = 'builtin' | 'api' | 'component';
@@ -30,6 +31,20 @@ export interface RendererDefinition {
 }
 
 const builtinRenderers: RendererDefinition[] = [
+  {
+    id: 'builtin-molecular-structure',
+    name: 'Molecular Structure 3D Renderer',
+    description: 'Interactive molecular and crystal structure renderer powered by 3Dmol.js.',
+    kind: 'builtin',
+    extensions: ['cif', 'pdb', 'ent', 'mol', 'sdf', 'xyz', 'mol2', 'vasp'],
+    preview: MolecularStructurePreview,
+    icon: FileIcon,
+    enabled: true,
+    scope: 'global',
+    editable: false,
+    installed: true,
+    source: 'official',
+  },
   {
     id: 'builtin-png-image',
     name: 'PNG Image Renderer',
@@ -140,6 +155,9 @@ export function listBuiltinRenderers(): RendererDefinition[] {
 }
 
 export function findRendererByFilename(filename: string): RendererDefinition | null {
+  if (['poscar', 'contcar'].includes(filename.trim().toLowerCase())) {
+    return listRenderers().find((renderer) => renderer.id === 'builtin-molecular-structure') || null;
+  }
   const extension = filename.split('.').pop()?.toLowerCase();
   if (!extension) return null;
   return listRenderers().find((renderer) => renderer.enabled && renderer.extensions.includes(extension)) || null;

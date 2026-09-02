@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from pathlib import Path
 from dataclasses import asdict, dataclass
 from typing import Any, Optional
 
@@ -18,6 +19,8 @@ class CompletionAdvice:
     recommendations: list[str]
     is_skill_candidate: bool
     skill_reason: str
+    shapefile_preview_available: bool = False
+    molecular_preview_available: bool = False
 
 
 class CompletionAdviceService:
@@ -41,6 +44,8 @@ class CompletionAdviceService:
             ],
             is_skill_candidate=False,
             skill_reason="",
+            shapefile_preview_available=False,
+            molecular_preview_available=False,
         )
 
     def default_advice(self) -> CompletionAdvice:
@@ -74,14 +79,42 @@ class CompletionAdviceService:
         tools = [event for event in events if isinstance(event, ToolEvent)]
         plans = [event for event in events if isinstance(event, PlanEvent)]
 
-        if len(steps) + len(tools) < 2 or not user_messages:
-            return self._default_advice()
-        return self._heuristic_skill_candidate(
-            user_messages,
-            assistant_messages,
-            plans,
-            steps,
-            tools,
+        advice = self._default_advice()
+        if len(steps) + len(tools) >= 2 and user_messages:
+            advice = self._heuristic_skill_candidate(
+                user_messages,
+                assistant_messages,
+                plans,
+                steps,
+                tools,
+            )
+        advice.shapefile_preview_available = self._has_shapefile_artifact(events)
+        advice.molecular_preview_available = self._has_molecular_artifact(events)
+        return advice
+
+    @staticmethod
+    def _has_shapefile_artifact(events: list[Any]) -> bool:
+        names: list[str] = []
+        for event in events:
+            if isinstance(event, MessageEvent) and event.role == "assistant":
+                names.extend((attachment.filename or "") for attachment in event.attachments or [])
+            elif isinstance(event, StepEvent):
+                names.extend(str(path) for path in event.step.attachments or [])
+        return any(str(name).lower().endswith((".shp", ".zip", ".rar")) for name in names)
+
+    @staticmethod
+    def _has_molecular_artifact(events: list[Any]) -> bool:
+        names: list[str] = []
+        for event in events:
+            if isinstance(event, MessageEvent) and event.role == "assistant":
+                names.extend((attachment.filename or "") for attachment in event.attachments or [])
+            elif isinstance(event, StepEvent):
+                names.extend(str(path) for path in event.step.attachments or [])
+        extensions = (".cif", ".pdb", ".ent", ".mol", ".sdf", ".xyz", ".mol2", ".vasp")
+        return any(
+            str(name).lower().endswith(extensions)
+            or Path(str(name)).name.casefold() in {"poscar", "contcar"}
+            for name in names
         )
 
     def _serialize_events(self, events: list[Any]) -> str:

@@ -98,7 +98,13 @@ ARTIFACT_EXTENSIONS = (
     ".pkl",
     ".pdf",
     ".png",
+    ".prj",
     ".py",
+    ".rar",
+    ".shp",
+    ".shx",
+    ".dbf",
+    ".cpg",
     ".svg",
     ".tif",
     ".tiff",
@@ -1280,10 +1286,20 @@ class AgentTaskRunner(TaskRunner):
                 await self._handle_tool_event(event)
                 if event.status == ToolStatus.CALLED:
                     if event.function_name == "dataset_analysis_run":
-                        # Compiled analysis has an explicit, runner-validated
-                        # attachment contract. Never publish unverified files
-                        # left behind by a failed program or its result.json.
-                        artifact_discovery_dirty = False
+                        # A successful compiled analysis has a validated result
+                        # contract, but model-authored manifests can omit files
+                        # they actually created (most often PNG plots). Discover
+                        # the bounded output directory as a reconciliation pass
+                        # so explicit and undeclared real artifacts are delivered
+                        # together. Failed runs remain isolated from discovery
+                        # to avoid publishing unverified leftovers.
+                        result = event.function_result
+                        success = (
+                            result.get("success")
+                            if isinstance(result, dict)
+                            else getattr(result, "success", False)
+                        )
+                        artifact_discovery_dirty = bool(success)
                     else:
                         # Tools may create or replace files. Defer discovery until
                         # the step boundary instead of scanning after every event.
@@ -1477,7 +1493,7 @@ class AgentTaskRunner(TaskRunner):
                 )
                 if completion_advice_service is not None:
                     try:
-                        advice = completion_advice_service.analyze_fast(turn_events)
+                        advice = completion_advice_service.analyze_fast([*turn_events, *pre_events])
                         event.advice = completion_advice_service.to_payload(advice)
                     except Exception as exc:
                         logger.warning("Failed to build completion advice for session %s: %s", self._session_id, exc)

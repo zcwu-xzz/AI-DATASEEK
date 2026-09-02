@@ -435,6 +435,63 @@ async def test_failed_compiled_analysis_does_not_publish_unverified_outputs():
     assert discovery_calls == 0
 
 
+@pytest.mark.asyncio
+async def test_successful_compiled_analysis_reconciles_undeclared_artifacts():
+    completed_step = Step(
+        description="分析数据集",
+        status=ExecutionStatus.COMPLETED,
+        success=True,
+        result="已生成可视化结果。",
+        inputs={"execution_mode": "dataset_fast_path"},
+    )
+
+    class _Flow:
+        status = AgentStatus.EXECUTING
+
+        async def run(self, message):
+            yield ToolEvent(
+                tool_call_id="analysis-1",
+                tool_name="shell",
+                function_name="dataset_analysis_run",
+                function_args={"command": "分析数据集并生成成果"},
+                function_result={"success": True, "attachments": []},
+                status=ToolStatus.CALLED,
+            )
+            yield StepEvent(status=StepStatus.COMPLETED, step=completed_step)
+            yield MessageEvent(message=completed_step.result)
+            yield DoneEvent()
+
+    runner = AgentTaskRunner.__new__(AgentTaskRunner)
+    runner._agent_id = "agent-1"
+    runner._session_id = "session-1"
+    runner._flow = _Flow()
+    runner._front_controller_resolution = _allow_controller_resolution()
+    runner._generated_files = []
+    runner._record_safety_audit = _noop
+    runner._initialize_mcp_tool = _noop
+    runner._handle_tool_event = _noop
+    runner._sync_message_attachments_to_storage = _noop
+
+    async def _sync_step(event):
+        return []
+
+    runner._sync_step_attachments_to_storage = _sync_step
+    discovery_calls = 0
+    artifact = FileInfo(filename="plot.png", file_path="/home/ubuntu/output/analysis-x/plot.png")
+
+    async def _discover(*, skip_paths=None):
+        nonlocal discovery_calls
+        discovery_calls += 1
+        return [artifact]
+
+    runner._sync_discovered_artifacts_to_storage = _discover
+
+    events = [event async for event in runner._run_flow(_message())]
+
+    assert any(isinstance(event, MessageEvent) and event.attachments == [artifact] for event in events)
+    assert discovery_calls == 1
+
+
 def test_compiled_analysis_manifest_is_not_a_syncable_artifact():
     runner = AgentTaskRunner.__new__(AgentTaskRunner)
     runner._protected_dataset_paths = set()

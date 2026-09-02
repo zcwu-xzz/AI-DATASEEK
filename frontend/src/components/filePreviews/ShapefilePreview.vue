@@ -4,6 +4,9 @@
       <div class="flex flex-wrap items-center gap-2">
         <span class="font-medium text-[var(--text-secondary)]">Shapefile 预览</span>
         <span v-if="summary">{{ summary }}</span>
+        <select v-if="layerChoices.length > 1" v-model="selectedLayerKey" class="max-w-[260px] rounded border border-[var(--border-main)] bg-white px-2 py-1 text-xs text-[var(--text-secondary)]" aria-label="选择 Shapefile 图层">
+          <option v-for="layer in layerChoices" :key="layer.key" :value="layer.key">{{ layer.label }}</option>
+        </select>
       </div>
       <span v-if="projectionSummary" class="max-w-[360px] truncate" :title="projectionText">{{ projectionSummary }}</span>
     </div>
@@ -15,36 +18,72 @@
     </div>
 
     <div v-else class="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_220px] gap-3 p-4">
-      <div class="min-h-0 overflow-hidden rounded-xl border border-[var(--border-main)] bg-white">
+      <div class="grid min-h-0 grid-cols-[180px_minmax(0,1fr)] overflow-hidden rounded-xl border border-[var(--border-main)] bg-white">
+        <aside class="min-h-0 overflow-auto border-r border-[var(--border-main)] bg-[var(--background-menu-white)] p-2">
+          <div class="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">图层</div>
+          <button
+            v-for="layer in layerChoices"
+            :key="layer.key"
+            type="button"
+            class="mb-1 flex w-full items-center gap-2 rounded px-2 py-2 text-left text-xs transition-colors"
+            :class="selectedLayerKey === layer.key ? 'bg-[#e8f1ec] text-[#245b42]' : 'text-[var(--text-secondary)] hover:bg-[var(--background-gray-main)]'"
+            @click="selectedLayerKey = layer.key"
+          >
+            <span class="size-2 shrink-0 rounded-full bg-[#2878d3]" />
+            <span class="min-w-0 flex-1 truncate" :title="layer.label">{{ layer.label }}</span>
+          </button>
+          <div v-if="!layerChoices.length" class="px-2 text-xs text-[var(--text-tertiary)]">暂无图层</div>
+        </aside>
+        <div class="relative min-h-0 overflow-hidden bg-[#eef2f4]">
+          <div class="absolute left-3 top-3 z-10 flex flex-col overflow-hidden rounded border border-[var(--border-main)] bg-white shadow-sm">
+            <button type="button" class="size-8 text-lg text-[var(--text-secondary)] hover:bg-gray-50" title="放大" @click="zoom(1.35)">+</button>
+            <button type="button" class="size-8 border-t border-[var(--border-main)] text-lg text-[var(--text-secondary)] hover:bg-gray-50" title="缩小" @click="zoom(0.74)">−</button>
+            <button type="button" class="size-8 border-t border-[var(--border-main)] text-xs text-[var(--text-secondary)] hover:bg-gray-50" title="复位" @click="resetView">⌂</button>
+          </div>
+          <label class="absolute right-3 top-3 z-10 flex items-center gap-2 rounded border border-[var(--border-main)] bg-white px-2 py-1.5 text-xs text-[var(--text-secondary)] shadow-sm">
+            <input v-model="showBasemap" type="checkbox" class="accent-[#2878d3]" /> 地图底图
+          </label>
+          <button type="button" class="absolute right-3 top-12 z-10 rounded border px-2 py-1.5 text-xs shadow-sm" :class="selectionMode ? 'border-[#2878d3] bg-[#e8f1ec] text-[#245b42]' : 'border-[var(--border-main)] bg-white text-[var(--text-secondary)]'" @click="selectionMode = !selectionMode">{{ selectionMode ? '取消框选' : '框选区域' }}</button>
         <svg
           v-if="viewBox && geometries.length"
-          class="h-full w-full"
+          ref="mapElement"
+          class="h-full w-full cursor-crosshair"
           :viewBox="viewBox"
-          preserveAspectRatio="xMidYMid meet">
+          preserveAspectRatio="xMidYMid meet"
+          @pointerdown="startSelection"
+          @pointermove="moveSelection"
+          @pointerup="finishSelection"
+          @pointerleave="finishSelection">
+          <template v-if="showBasemap && basemapTiles.length">
+            <image v-for="tile in basemapTiles" :key="tile.key" :href="tile.url" :x="tile.x" :y="tile.y" :width="tile.width" :height="tile.height" preserveAspectRatio="none" opacity="0.72" />
+          </template>
           <g>
-            <template v-for="geometry in geometries" :key="`${geometry.type}-${JSON.stringify(geometry.coordinates)}`">
+            <template v-for="(geometry, geometryIndex) in geometries" :key="`${geometry.type}-${geometryIndex}`">
               <circle
                 v-if="geometry.type === 'Point'"
+                @click.stop="selectFeature(geometryIndex)"
                 :cx="geometry.coordinates[0]"
                 :cy="flipY(geometry.coordinates[1])"
                 :r="pointRadius"
-                fill="#2563eb"
+                :fill="selectedIndex === geometryIndex ? '#dc2626' : '#2563eb'"
                 fill-opacity="0.85" />
               <template v-else-if="geometry.type === 'MultiPoint'">
                 <circle
                   v-for="(point, pointIndex) in geometry.coordinates"
                   :key="pointIndex"
+                  @click.stop="selectFeature(geometryIndex)"
                   :cx="point[0]"
                   :cy="flipY(point[1])"
                   :r="pointRadius"
-                  fill="#2563eb"
+                  :fill="selectedIndex === geometryIndex ? '#dc2626' : '#2563eb'"
                   fill-opacity="0.85" />
               </template>
               <path
                 v-else-if="geometry.type === 'LineString'"
+                @click.stop="selectFeature(geometryIndex)"
                 :d="linePath(geometry.coordinates)"
                 fill="none"
-                stroke="#0f766e"
+                :stroke="selectedIndex === geometryIndex ? '#dc2626' : '#0f766e'"
                 :stroke-width="strokeWidth"
                 stroke-linejoin="round"
                 stroke-linecap="round" />
@@ -52,35 +91,45 @@
                 <path
                   v-for="(line, lineIndex) in geometry.coordinates"
                   :key="lineIndex"
+                  @click.stop="selectFeature(geometryIndex)"
                   :d="linePath(line)"
                   fill="none"
-                  stroke="#0f766e"
+                :stroke="selectedIndex === geometryIndex ? '#dc2626' : '#0f766e'"
                   :stroke-width="strokeWidth"
                   stroke-linejoin="round"
                   stroke-linecap="round" />
               </template>
               <path
                 v-else-if="geometry.type === 'Polygon'"
+                @click.stop="selectFeature(geometryIndex)"
                 :d="polygonPath(geometry.coordinates)"
-                fill="#16a34a"
+                :fill="selectedIndex === geometryIndex ? '#dc2626' : '#16a34a'"
                 fill-opacity="0.28"
-                stroke="#15803d"
+                :stroke="selectedIndex === geometryIndex ? '#b91c1c' : '#15803d'"
                 :stroke-width="strokeWidth"
                 stroke-linejoin="round" />
               <template v-else-if="geometry.type === 'MultiPolygon'">
                 <path
                   v-for="(polygon, polygonIndex) in geometry.coordinates"
                   :key="polygonIndex"
+                  @click.stop="selectFeature(geometryIndex)"
                   :d="polygonPath(polygon)"
-                  fill="#16a34a"
+                  :fill="selectedIndex === geometryIndex ? '#dc2626' : '#16a34a'"
                   fill-opacity="0.28"
-                  stroke="#15803d"
+                  :stroke="selectedIndex === geometryIndex ? '#b91c1c' : '#15803d'"
                   :stroke-width="strokeWidth"
                   stroke-linejoin="round" />
               </template>
             </template>
           </g>
+          <rect v-if="selectionRect" :x="selectionRect[0]" :y="-selectionRect[3]" :width="selectionRect[2] - selectionRect[0]" :height="selectionRect[3] - selectionRect[1]" fill="#2878d3" fill-opacity="0.14" stroke="#2878d3" stroke-dasharray="4 3" />
         </svg>
+          <div v-else class="flex h-full items-center justify-center text-sm text-[var(--text-tertiary)]">暂无可绘制的几何要素</div>
+          <span v-if="showBasemap && basemapTiles.length" class="absolute bottom-2 right-2 rounded bg-white/85 px-1.5 py-0.5 text-[10px] text-gray-600">© OpenStreetMap contributors</span>
+        <div v-if="selectedIndex !== null" class="absolute bottom-3 left-3 max-w-[min(420px,calc(100%-24px))] rounded border border-[#f0c36a] bg-white/95 px-3 py-2 text-xs text-[var(--text-secondary)] shadow-sm">
+          已选择第 {{ selectedIndex + 1 }} 个要素 · 可在下方属性表中查看详情
+        </div>
+        </div>
       </div>
 
       <div class="min-h-0 overflow-hidden rounded-xl border border-[var(--border-main)] bg-[var(--background-menu-white)]">
@@ -96,7 +145,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-[var(--border-main)]">
-              <tr v-for="(row, rowIndex) in previewRows" :key="rowIndex">
+              <tr v-for="(row, rowIndex) in previewRows" :key="rowIndex" :class="selectedIndex === rowIndex ? 'bg-[#fff7e6]' : ''" class="cursor-pointer" @click="selectedIndex = rowIndex">
                 <td v-for="field in fields" :key="field" class="max-w-[220px] truncate px-3 py-2 text-[var(--text-secondary)]" :title="String(row[field] ?? '')">
                   {{ row[field] ?? '-' }}
                 </td>
@@ -138,16 +187,35 @@ const props = defineProps<{
 
 const { relatedFiles } = useFilePanel();
 const status = ref('');
+const selectedLayerKey = ref('');
 const geometries = ref<Geometry[]>([]);
 const attributes = ref<Array<Record<string, string | number | boolean | null>>>([]);
 const projectionText = ref('');
 const bounds = ref<[number, number, number, number] | null>(null);
+const viewBounds = ref<[number, number, number, number] | null>(null);
+const selectedIndex = ref<number | null>(null);
+const showBasemap = ref(true);
+const selectionMode = ref(false);
+const selectionRect = ref<[number, number, number, number] | null>(null);
+const selectionStart = ref<Point | null>(null);
 let loadVersion = 0;
 
 const getExtension = (filename: string) => filename.split('.').pop()?.toLowerCase() || '';
 const stripExtension = (filename: string) => filename.replace(/\.[^/.]+$/, '');
-const basename = (filename: string) => filename.split('/').pop() || filename;
-const groupKey = (filename: string) => stripExtension(basename(filename)).toLowerCase();
+const logicalPath = (file: FileInfo) => String(file.metadata?.logical_path || file.relative_path || file.filename);
+const groupKey = (file: FileInfo) => stripExtension(logicalPath(file)).toLowerCase();
+
+const layerChoices = computed(() => {
+  const groups = new Map<string, { key: string; label: string; shp: FileInfo }>();
+  for (const file of relatedFiles.value) {
+    if (getExtension(file.filename) !== 'shp') continue;
+    const key = groupKey(file);
+    groups.set(key, { key, label: logicalPath(file).replace(/\.[^.]+$/, ''), shp: file });
+  }
+  return Array.from(groups.values());
+});
+
+const activeFile = computed(() => layerChoices.value.find(layer => layer.key === selectedLayerKey.value)?.shp || props.file);
 
 const summary = computed(() => {
   if (!geometries.value.length) return '';
@@ -170,12 +238,39 @@ const fields = computed(() => {
 const previewRows = computed(() => attributes.value.slice(0, 100));
 
 const viewBox = computed(() => {
-  if (!bounds.value) return '';
-  const [minX, minY, maxX, maxY] = bounds.value;
+  if (!viewBounds.value) return '';
+  const [minX, minY, maxX, maxY] = viewBounds.value;
   const width = Math.max(maxX - minX, 1);
   const height = Math.max(maxY - minY, 1);
   const pad = Math.max(width, height) * 0.04;
   return `${minX - pad} ${-maxY - pad} ${width + pad * 2} ${height + pad * 2}`;
+});
+
+interface BasemapTile { key: string; url: string; x: number; y: number; width: number; height: number }
+const basemapTiles = computed<BasemapTile[]>(() => {
+  const extent = bounds.value;
+  if (!showBasemap.value || !extent || !/WGS.*84|4326|GCS_WGS/i.test(projectionText.value)) return [];
+  const [minLon, minLat, maxLon, maxLat] = extent;
+  if (minLon < -180 || maxLon > 180 || minLat < -85 || maxLat > 85) return [];
+  const zoomLevel = Math.max(2, Math.min(12, Math.round(Math.log2(360 / Math.max(maxLon - minLon, 0.05))) - 1));
+  const n = 2 ** zoomLevel;
+  const lonToX = (lon: number) => ((lon + 180) / 360) * n;
+  const latToY = (lat: number) => (1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Math.PI) / 2 * n;
+  const startX = Math.max(0, Math.floor(lonToX(minLon)) - 1);
+  const endX = Math.min(n - 1, Math.floor(lonToX(maxLon)) + 1);
+  const startY = Math.max(0, Math.floor(latToY(maxLat)) - 1);
+  const endY = Math.min(n - 1, Math.floor(latToY(minLat)) + 1);
+  const xToLon = (x: number) => x / n * 360 - 180;
+  const yToLat = (y: number) => (180 / Math.PI) * Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n)));
+  const tiles: BasemapTile[] = [];
+  for (let x = startX; x <= endX; x += 1) {
+    for (let y = startY; y <= endY; y += 1) {
+      const west = xToLon(x); const east = xToLon(x + 1);
+      const north = yToLat(y); const south = yToLat(y + 1);
+      tiles.push({ key: `${zoomLevel}/${x}/${y}`, url: `https://tile.openstreetmap.org/${zoomLevel}/${x}/${y}.png`, x: west, y: -north, width: east - west, height: north - south });
+    }
+  }
+  return tiles;
 });
 
 const pointRadius = computed(() => {
@@ -187,6 +282,48 @@ const pointRadius = computed(() => {
 const strokeWidth = computed(() => pointRadius.value * 0.6);
 
 const flipY = (y: number) => -y;
+const selectFeature = (index: number) => { selectedIndex.value = index; };
+const svgDataPoint = (event: PointerEvent): Point | null => {
+  const target = event.currentTarget as SVGSVGElement | null;
+  if (!target || !viewBounds.value) return null;
+  const rect = target.getBoundingClientRect();
+  const [minX, minY, maxX, maxY] = viewBounds.value;
+  const x = minX + ((event.clientX - rect.left) / rect.width) * (maxX - minX);
+  const displayY = -maxY + ((event.clientY - rect.top) / rect.height) * (maxY - minY);
+  return [x, -displayY];
+};
+const startSelection = (event: PointerEvent) => {
+  if (!selectionMode.value) return;
+  selectionStart.value = svgDataPoint(event);
+  selectionRect.value = null;
+};
+const moveSelection = (event: PointerEvent) => {
+  if (!selectionMode.value || !selectionStart.value) return;
+  const current = svgDataPoint(event);
+  if (!current) return;
+  selectionRect.value = [Math.min(selectionStart.value[0], current[0]), Math.min(selectionStart.value[1], current[1]), Math.max(selectionStart.value[0], current[0]), Math.max(selectionStart.value[1], current[1])];
+};
+const finishSelection = (event: PointerEvent) => {
+  if (!selectionMode.value || !selectionStart.value) return;
+  moveSelection(event);
+  const selected = selectionRect.value;
+  selectionStart.value = null;
+  if (!selected) return;
+  const overlaps = (geometry: Geometry) => {
+    const extent = calculateBounds([geometry]);
+    return extent && extent[2] >= selected[0] && extent[0] <= selected[2] && extent[3] >= selected[1] && extent[1] <= selected[3];
+  };
+  const first = geometries.value.findIndex(overlaps);
+  selectedIndex.value = first >= 0 ? first : null;
+};
+const resetView = () => { viewBounds.value = bounds.value ? [...bounds.value] as [number, number, number, number] : null; };
+const zoom = (factor: number) => {
+  if (!viewBounds.value) return;
+  const [minX, minY, maxX, maxY] = viewBounds.value;
+  const centerX = (minX + maxX) / 2; const centerY = (minY + maxY) / 2;
+  const width = (maxX - minX) * factor; const height = (maxY - minY) * factor;
+  viewBounds.value = [centerX - width / 2, centerY - height / 2, centerX + width / 2, centerY + height / 2];
+};
 const linePath = (points: Point[]) => points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point[0]} ${flipY(point[1])}`).join(' ');
 const polygonPath = (rings: Point[][]) => rings.map((ring) => `${linePath(ring)} Z`).join(' ');
 
@@ -335,13 +472,15 @@ const loadShapefile = async () => {
   attributes.value = [];
   projectionText.value = '';
   bounds.value = null;
+  viewBounds.value = null;
+  selectedIndex.value = null;
 
   try {
-    const currentKey = groupKey(props.file.filename);
+    const currentKey = groupKey(activeFile.value);
     const candidates = relatedFiles.value.length ? relatedFiles.value : [props.file];
-    const group = candidates.filter((file) => groupKey(file.filename) === currentKey);
+    const group = candidates.filter((file) => groupKey(file) === currentKey);
     const byExtension = new Map(group.map((file) => [getExtension(file.filename), file]));
-    const shp = byExtension.get('shp') || (getExtension(props.file.filename) === 'shp' ? props.file : null);
+    const shp = byExtension.get('shp') || (getExtension(activeFile.value.filename) === 'shp' ? activeFile.value : null);
     const dbf = byExtension.get('dbf');
     const prj = byExtension.get('prj');
 
@@ -357,6 +496,7 @@ const loadShapefile = async () => {
     if (currentVersion !== loadVersion) return;
     geometries.value = parsedGeometries;
     bounds.value = calculateBounds(parsedGeometries);
+    viewBounds.value = bounds.value ? [...bounds.value] as [number, number, number, number] : null;
 
     if (dbf) {
       attributes.value = parseDbf(await fetchBuffer(dbf));
@@ -375,5 +515,12 @@ const loadShapefile = async () => {
   }
 };
 
-watch(() => props.file, loadShapefile, { immediate: true });
+watch([() => props.file, selectedLayerKey], () => {
+  if (!selectedLayerKey.value && layerChoices.value.length) selectedLayerKey.value = groupKey(props.file);
+  void loadShapefile();
+}, { immediate: true });
+watch(relatedFiles, () => {
+  if (!selectedLayerKey.value && layerChoices.value.length) selectedLayerKey.value = groupKey(props.file);
+  void loadShapefile();
+});
 </script>
