@@ -6,6 +6,8 @@ import TiffFilePreview from '@/components/filePreviews/TiffFilePreview.vue';
 import ShapefilePreview from '@/components/filePreviews/ShapefilePreview.vue';
 import HtmlFilePreview from '@/components/filePreviews/HtmlFilePreview.vue';
 import MolecularStructurePreview from '@/components/filePreviews/MolecularStructurePreview.vue';
+import FastaSequencePreview from '@/components/filePreviews/FastaSequencePreview.vue';
+import BioTextPreview from '@/components/filePreviews/BioTextPreview.vue';
 import type { RendererInfo } from '@/api/renderer';
 
 export type RendererKind = 'builtin' | 'api' | 'component';
@@ -32,11 +34,19 @@ export interface RendererDefinition {
 
 const builtinRenderers: RendererDefinition[] = [
   {
+    id: 'builtin-fasta-sequence', name: 'FASTA Sequence Renderer', description: 'Ruler-based FASTA sequence browser.', kind: 'builtin',
+    extensions: ['fasta', 'fa', 'fna', 'ffn', 'frn', 'fastq', 'fq'], preview: FastaSequencePreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
+  },
+  {
+    id: 'builtin-bio-text', name: 'Biological Text Renderer', description: 'Structured preview for VCF, GFF/GTF, BED and SAM files.', kind: 'builtin',
+    extensions: ['vcf', 'gff', 'gff3', 'gtf', 'bed', 'sam', 'wig', 'bedgraph'], preview: BioTextPreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
+  },
+  {
     id: 'builtin-molecular-structure',
     name: 'Molecular Structure 3D Renderer',
     description: 'Interactive molecular and crystal structure renderer powered by 3Dmol.js.',
     kind: 'builtin',
-    extensions: ['cif', 'pdb', 'ent', 'mol', 'sdf', 'xyz', 'mol2', 'vasp'],
+    extensions: ['cif', 'mmcif', 'pdb', 'ent', 'mol', 'sdf', 'xyz', 'mol2', 'vasp'],
     preview: MolecularStructurePreview,
     icon: FileIcon,
     enabled: true,

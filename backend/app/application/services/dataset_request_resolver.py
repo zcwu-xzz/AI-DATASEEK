@@ -3,11 +3,12 @@ import logging
 import asyncio
 import secrets
 import time
+import httpx
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import Any, Literal
 
-from langchain.messages import HumanMessage, SystemMessage
+from langchain.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import get_settings
@@ -479,12 +480,13 @@ class DatasetRequestResolver:
             overrides["max_tokens"] = min(configured_max_tokens, 1000) if isinstance(configured_max_tokens, int) else 1000
             settings = get_settings()
             model = create_chat_model(settings, overrides=overrides)
-            runnable = model.bind(response_format={"type": "json_object"}, tool_choice="none")
-            response = await asyncio.wait_for(
-                runnable.ainvoke([
-                    SystemMessage(content=DECISION_PROMPT),
-                    HumanMessage(content=json.dumps(context, ensure_ascii=False)),
-                ]),
+            messages = [
+                SystemMessage(content=DECISION_PROMPT),
+                HumanMessage(content=json.dumps(context, ensure_ascii=False)),
+            ]
+            response = await self._invoke_decision_model(
+                model,
+                messages,
                 timeout=settings.dataset_request_resolver_timeout_seconds,
             )
             await self._record_usage(response, user_id=user_id, session_id=session_id)
@@ -874,10 +876,93 @@ class DatasetRequestResolver:
         return decision.execution.target_files
 
     async def _record_usage(self, response: Any, *, user_id: str | None, session_id: str | None) -> None:
+        # Some OpenAI-compatible gateways return the content string directly.
+        # TokenUsageService expects an AIMessage and may otherwise attempt
+        # model_dump() on the string while recording usage.
+        if isinstance(response, str):
+            return
         try:
             await self._token_usage.record_from_message(response, user_id=user_id, session_id=session_id)
         except Exception as exc:
             logger.warning("Failed to record lightweight resolver usage: %s", exc)
+
+    @staticmethod
+    async def _invoke_decision_model(model: Any, messages: list[Any], *, timeout: float) -> Any:
+        """Invoke the decision model without provider-specific JSON bindings.
+
+        The configured OpenAI-compatible gateway sometimes returns a bare text
+        payload. Its LangChain adapter then attempts ``choices``/``model_dump``
+        on that string when optional response-format bindings are present. The
+        resolver already validates with ``parse_json_lenient`` afterwards, so a
+        plain invocation is both safer and provider independent.
+        """
+        try:
+            return DatasetRequestResolver._coerce_model_response(
+                await asyncio.wait_for(model.ainvoke(messages), timeout=timeout)
+            )
+        except AttributeError as exc:
+            if not any(token in str(exc) for token in ("choices", "model_dump")):
+                raise
+            logger.warning("Decision model returned a non-standard schema; using raw compatibility parser: %s", exc)
+            return await DatasetRequestResolver._invoke_raw_compatible(model, messages, timeout=timeout)
+
+    @staticmethod
+    def _coerce_model_response(response: Any) -> Any:
+        """Normalize bare gateway strings to the message shape used downstream."""
+        if isinstance(response, str):
+            return AIMessage(content=response)
+        return response
+
+    @staticmethod
+    async def _invoke_raw_compatible(model: Any, messages: list[Any], *, timeout: float) -> AIMessage:
+        """Call an OpenAI-compatible endpoint and tolerate malformed choices entries."""
+        base_url = str(getattr(model, "openai_api_base", "") or "").rstrip("/")
+        if not base_url:
+            raise RuntimeError("model has no OpenAI-compatible base URL")
+        endpoint = base_url if base_url.endswith("/chat/completions") else f"{base_url}/chat/completions"
+        secret = getattr(model, "openai_api_key", None)
+        api_key = secret.get_secret_value() if hasattr(secret, "get_secret_value") else str(secret or "")
+        payload = {
+            "model": getattr(model, "model_name", ""),
+            "messages": [
+                {"role": "system" if isinstance(message, SystemMessage) else "user", "content": str(message.content)}
+                for message in messages
+            ],
+            "temperature": getattr(model, "temperature", 0),
+            "max_tokens": getattr(model, "max_tokens", 1000),
+        }
+        extra_body = getattr(model, "extra_body", None)
+        if isinstance(extra_body, dict):
+            payload.update(extra_body)
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(endpoint, json=payload, headers=headers)
+            response.raise_for_status()
+            raw_body = response.text or ""
+            try:
+                data = response.json()
+            except ValueError:
+                # Some compatible gateways return the assistant JSON as a
+                # plain text body (content-type text/plain).
+                data = raw_body
+        content: Any = ""
+        if isinstance(data, str):
+            content = data
+        choices = data.get("choices") if isinstance(data, dict) else None
+        if isinstance(choices, list) and choices:
+            first = choices[0]
+            if isinstance(first, str):
+                content = first
+            elif isinstance(first, dict):
+                message = first.get("message")
+                content = message.get("content", "") if isinstance(message, dict) else first.get("text", "")
+        if not content and isinstance(data, dict):
+            content = data.get("content") or data.get("output_text") or ""
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("compatible gateway returned no decision content")
+        return AIMessage(content=content, response_metadata={"raw_compatible_response": True})
 
     @staticmethod
     def _message_text(message: Any) -> str:

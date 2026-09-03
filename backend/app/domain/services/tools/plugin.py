@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import shlex
+from pathlib import PurePosixPath
 from pathlib import Path
 from typing import Any, Optional
 
@@ -95,6 +96,23 @@ class PluginToolkit(BaseToolkit):
                     raise ValueError(f"Duplicate plugin tool name: {name}")
                 if not isinstance(description, str) or not description.strip():
                     raise ValueError(f"Plugin tool {name} has no description")
+                # Biomolecular plugin tools use a shared input/output contract; keep
+                # the manifest concise while still exposing valid OpenAI schemas.
+                if plugin_name == "biomolecular_structure" and parameters is None:
+                    parameters = {
+                        "type": "object",
+                        "properties": {
+                            "input_path": {"type": "string"},
+                            "output_path": {"type": ["string", "null"]},
+                            "other_path": {"type": ["string", "null"]},
+                        },
+                        "required": ["input_path"],
+                        "additionalProperties": False,
+                    }
+                    item = dict(item)
+                    item["parameters"] = parameters
+                    item.setdefault("scopes", ["dataset_fast_path"])
+                    item.setdefault("timeout_seconds", 120)
                 if not isinstance(parameters, dict) or parameters.get("type") != "object":
                     raise ValueError(f"Plugin tool {name} has an invalid parameter schema")
                 definition = dict(item)
@@ -149,6 +167,35 @@ class PluginToolkit(BaseToolkit):
         viewed = await self.sandbox.view_shell(self.session_id)
         view_data = self._result_data(viewed)
         returncode = wait_data.get("returncode")
+        output = view_data.get("output", "")
+        output_data: dict[str, Any] | None = None
+        if isinstance(output, str):
+            try:
+                decoded = json.loads(output.strip().splitlines()[-1])
+                if isinstance(decoded, dict):
+                    output_data = decoded
+            except (ValueError, json.JSONDecodeError):
+                output_data = None
+        attachments: list[str] = []
+        if returncode == 0 and output_data is not None:
+            candidate_values = [
+                output_data.get("output_path"),
+                output_data.get("interactive_output_path"),
+            ]
+            requested = arguments.get("output_path")
+            if isinstance(requested, str):
+                candidate_values.append(requested)
+                if requested.lower().endswith((".png", ".jpg", ".jpeg")):
+                    candidate_values.append(str(PurePosixPath(requested).with_suffix(".html")))
+            for value in candidate_values:
+                if not isinstance(value, str):
+                    continue
+                path = PurePosixPath(value)
+                if path.is_absolute() and path.is_relative_to(PurePosixPath("/home/ubuntu/output")) and path not in attachments:
+                    attachments.append(str(path))
+            if attachments:
+                output_data["attachments"] = attachments
+                output = json.dumps(output_data, ensure_ascii=False)
         return ToolResult(
             success=returncode == 0 and viewed.success,
             message=(
@@ -161,7 +208,8 @@ class PluginToolkit(BaseToolkit):
                 "command": command,
                 "status": "completed",
                 "returncode": returncode,
-                "output": view_data.get("output", ""),
+                "output": output,
+                "attachments": attachments,
             },
         )
 

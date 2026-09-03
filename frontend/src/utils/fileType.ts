@@ -10,6 +10,8 @@ import TiffFilePreview from '../components/filePreviews/TiffFilePreview.vue';
 import ShapefilePreview from '../components/filePreviews/ShapefilePreview.vue';
 import HtmlFilePreview from '../components/filePreviews/HtmlFilePreview.vue';
 import CsvFilePreview from '../components/filePreviews/CsvFilePreview.vue';
+import FastaSequencePreview from '../components/filePreviews/FastaSequencePreview.vue';
+import BioTextPreview from '../components/filePreviews/BioTextPreview.vue';
 import { findRendererByFilename } from '@/renderers/registry';
 
 export interface FileType {
@@ -54,6 +56,17 @@ const archiveFileExtensions = [
 ];
 
 export const getFileType = (filename: string): FileType => {
+  // Built-in scientific text previews must take precedence over user/configured
+  // renderers.  A stale renderer configuration should never turn a supported
+  // biological file back into the unknown preview.
+  const normalizedName = String(filename || '').trim().toLowerCase();
+  const biologicalExtension = normalizedName.split('.').pop() || '';
+  if (['fasta', 'fa', 'fna', 'ffn', 'frn', 'fastq', 'fq'].includes(biologicalExtension)) {
+    return { icon: FileIcon, preview: FastaSequencePreview };
+  }
+  if (['vcf', 'gff', 'gff3', 'gtf', 'bed', 'sam', 'wig', 'bedgraph'].includes(biologicalExtension)) {
+    return { icon: FileIcon, preview: BioTextPreview };
+  }
   const renderer = findRendererByFilename(filename);
   if (renderer) {
     return {
@@ -74,6 +87,7 @@ export const getFileType = (filename: string): FileType => {
   if (file_extension === 'csv' || file_extension === 'tsv') {
     return { icon: FileIcon, preview: CsvFilePreview };
   }
+
   
   if (file_extension && codeFileExtensions.includes(file_extension)) {
     return {

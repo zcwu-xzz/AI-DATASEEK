@@ -4,6 +4,16 @@ from pathlib import Path
 from collections import Counter
 import numpy as np
 
+def plot_style():
+ import matplotlib.pyplot as plt
+ plt.rcParams.update({'figure.facecolor':'white','axes.facecolor':'#fbfcfe','axes.edgecolor':'#cbd5e1','axes.labelcolor':'#334155','xtick.color':'#475569','ytick.color':'#475569','font.size':10,'axes.titleweight':'bold'})
+ return plt
+def finish_plot(fig, out):
+ # Keep pyplot scoped here so callers cannot accidentally rely on a local import.
+ import matplotlib.pyplot as plt
+ fig.tight_layout(pad=1.4); Path(out).parent.mkdir(parents=True,exist_ok=True); fig.savefig(out,dpi=220,bbox_inches='tight',facecolor='white'); plt.close(fig)
+def html_output(out): return str(Path(out).with_suffix('.html'))
+
 def fail(m): print(json.dumps({'success':False,'error':m},ensure_ascii=False)); raise SystemExit(0)
 def emit(d,out=None):
  p={'success':True,**d}
@@ -98,7 +108,7 @@ def main():
  if op=='sequence_batch_profile': emit({'files':[{'path':Path(p).name,**summary(records(p))} for p in a['input_paths']]}); return
  if op=='sequence_gc_visualize':
   import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
-  vals=[(str(r.seq).upper().count('G')+str(r.seq).upper().count('C'))/max(len(r),1)*100 for r in rs]; plt.hist(vals,bins=30); plt.xlabel('GC %'); plt.ylabel('Sequences'); plt.tight_layout(); Path(out).parent.mkdir(parents=True,exist_ok=True); plt.savefig(out,dpi=150); plt.close(); emit({'output_path':Path(out).name,'sequence_count':len(rs)}); return
+  vals=[(str(r.seq).upper().count('G')+str(r.seq).upper().count('C'))/max(len(r),1)*100 for r in rs]; fig,ax=plt.subplots(figsize=(10,5)); ax.hist(vals,bins=30,color='#2563eb',alpha=.88,edgecolor='white'); ax.axvline(np.mean(vals) if vals else 0,color='#dc2626',ls='--',label='平均值'); ax.set(title='GC 含量分布',xlabel='GC 含量 (%)',ylabel='序列数量'); ax.grid(axis='y',alpha=.2); ax.legend(); finish_plot(fig,out); emit({'output_path':Path(out).name,'sequence_count':len(rs),'mean_gc_percent':float(np.mean(vals)) if vals else None}); return
  if op=='sequence_fastqc_report':
   d=Path(a['output_dir']); d.mkdir(parents=True,exist_ok=True); payload={'source':Path(path).name,**summary(rs)}; (d/'sequence_quality.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)); emit({'output_dir':d.name,'files':['sequence_quality.json']}); return
  if op=='reference_fasta_inspect': emit({'reference':Path(path).name,'sequences':[{'id':r.id,'length':len(r.seq),'gc_percent':(str(r.seq).upper().count('G')+str(r.seq).upper().count('C'))/max(len(r),1)*100} for r in rs]}); return
@@ -116,7 +126,7 @@ def main():
   import pandas as pd; df=pd.read_csv(path,sep=None,engine='python'); col=next((c for c in df.columns if str(c).lower() in {'depth','coverage','cov'}),df.columns[-1]); v=df[col].to_numpy(float); emit({'column':str(col),'count':len(v),'mean_depth':float(np.mean(v)),'covered_fraction':float(np.mean(v>0)),'percentiles':{str(p):float(np.percentile(v,p)) for p in (1,25,50,75,95)}}); return
  if op=='sequence_depth_visualize':
   import pandas as pd,matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
-  df=pd.read_csv(path,sep=None,engine='python'); col=df.columns[-1]; plt.plot(df[col].to_numpy(float)); plt.xlabel('Position'); plt.ylabel(str(col)); plt.tight_layout(); Path(out).parent.mkdir(parents=True,exist_ok=True); plt.savefig(out,dpi=150); plt.close(); emit({'output_path':Path(out).name}); return
+  df=pd.read_csv(path,sep=None,engine='python'); col=df.columns[-1]; values=df[col].to_numpy(float); fig,ax=plt.subplots(figsize=(12,4.8)); ax.plot(np.arange(1,len(values)+1),values,color='#0f766e',lw=1.4); ax.fill_between(np.arange(1,len(values)+1),values,0,color='#14b8a6',alpha=.12); ax.set(title='测序深度曲线',xlabel='基因组位置',ylabel='深度'); ax.grid(alpha=.2); finish_plot(fig,out); emit({'output_path':Path(out).name,'positions':len(values),'mean_depth':float(np.mean(values)) if len(values) else 0}); return
  if op=='blast_result_inspect':
   rows=blast_rows(path); emit({'file':Path(path).name,'hit_count':len(rows),'query_count':len({r['qseqid'] for r in rows}),'subject_count':len({r['sseqid'] for r in rows}),'identity_mean':float(np.mean([r['pident'] for r in rows])) if rows else None,'top_hits':sorted(rows,key=lambda r:(r['bitscore'],-r['evalue']),reverse=True)[:100]}); return
  if op in {'blast_hit_visualize','blast_dotplot_visualize'}:
@@ -126,26 +136,70 @@ def main():
   Path(out).parent.mkdir(parents=True,exist_ok=True); fig,ax=plt.subplots(figsize=(12,7))
   if op=='blast_dotplot_visualize':
    for r in rows[:10000]: ax.plot([r['qstart'],r['qend']],[r['sstart'],r['send']],alpha=.35,linewidth=1)
-   ax.set_xlabel('Query position'); ax.set_ylabel('Subject position'); ax.set_title('BLAST alignment dot plot')
+   ax.set_xlabel('查询序列位置'); ax.set_ylabel('参考序列位置'); ax.set_title('BLAST 命中点阵图')
   else:
    top=sorted(rows,key=lambda r:(r['bitscore'],-r['evalue']),reverse=True)[:int(a.get('max_hits',100))]; subjects={s:i for i,s in enumerate(dict.fromkeys(r['sseqid'] for r in top))}
    for r in top:
     y=subjects[r['sseqid']]; ax.plot([r['qstart'],r['qend']],[y,y],linewidth=max(1,min(6,r['pident']/20)),alpha=.8); ax.scatter([r['qstart'],r['qend']],[y,y],s=10)
-   ax.set_yticks(list(subjects.values()),list(subjects.keys())); ax.set_xlabel('Query position'); ax.set_ylabel('Subject'); ax.set_title('BLAST hit map')
-  ax.grid(alpha=.2); fig.tight_layout(); fig.savefig(out,dpi=160); plt.close(fig); emit({'output_path':Path(out).name,'hit_count':len(rows),'rendered_hits':min(len(rows),int(a.get('max_hits',10000)))}); return
+   ax.set_yticks(list(subjects.values()),list(subjects.keys())); ax.set_xlabel('查询序列位置'); ax.set_ylabel('参考序列'); ax.set_title('BLAST 命中区间图')
+  ax.grid(alpha=.2); finish_plot(fig,out)
+  try:
+   import plotly.graph_objects as go
+   top=rows[:int(a.get('max_hits',100))]; x=[]; y=[]; text=[]
+   if op=='blast_dotplot_visualize':
+    for r in top: x += [r['qstart'],r['qend'],None]; y += [r['sstart'],r['send'],None]; text += [f"{r['qseqid']} → {r['sseqid']} 相似度 {r['pident']:.1f}%"]*2+[None]
+    chart=go.Figure(go.Scatter(x=x,y=y,mode='lines',text=text,hoverinfo='text')); chart.update_layout(title='BLAST 命中点阵图',xaxis_title='查询序列位置',yaxis_title='参考序列位置')
+   else:
+    subjects={s:i for i,s in enumerate(dict.fromkeys(r['sseqid'] for r in top))}
+    for r in top: x += [r['qstart'],r['qend'],None]; y += [subjects[r['sseqid']]]*2+[None]; text += [f"{r['sseqid']} | 相似度 {r['pident']:.1f}% | E-value {r['evalue']:.2g}"]*2+[None]
+    chart=go.Figure(go.Scatter(x=x,y=y,mode='lines',text=text,hoverinfo='text')); chart.update_layout(title='BLAST 命中区间图',xaxis_title='查询序列位置',yaxis_title='参考序列')
+   chart.write_html(html_output(out),include_plotlyjs='inline',full_html=True)
+  except Exception: pass
+  emit({'output_path':Path(out).name,'interactive_output_path':Path(html_output(out)).name,'hit_count':len(rows),'rendered_hits':min(len(rows),int(a.get('max_hits',10000)))}); return
  if op in {'sequence_quality_boxplot','sequence_quality_heatmap','sequence_base_composition_visualize'}:
   import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
   if not rs or not any(r.letter_annotations.get('phred_quality') for r in rs): fail('输入中没有 FASTQ 质量值')
   Path(out).parent.mkdir(parents=True,exist_ok=True); fig,ax=plt.subplots(figsize=(12,7))
   if op=='sequence_quality_boxplot':
-   q=[ [r.letter_annotations['phred_quality'][i] for r in rs if i<len(r) and r.letter_annotations.get('phred_quality')] for i in range(max(map(len,rs))) ]; ax.boxplot(q,showfliers=False); ax.set_xlabel('Position'); ax.set_ylabel('Phred quality')
+   q=[ [r.letter_annotations['phred_quality'][i] for r in rs if i<len(r) and r.letter_annotations.get('phred_quality')] for i in range(max(map(len,rs))) ]; ax.boxplot(q,showfliers=False,patch_artist=True,boxprops={'facecolor':'#bfdbfe','color':'#2563eb'},medianprops={'color':'#dc2626'}); ax.axhspan(0,20,color='#fee2e2',alpha=.35); ax.set_xlabel('测序位置'); ax.set_ylabel('Phred 质量值'); ax.set_title('FASTQ 位点质量分布')
   elif op=='sequence_quality_heatmap':
-   matrix=np.array([r.letter_annotations.get('phred_quality',[]) for r in rs[:int(a.get('max_reads',500))]],dtype=float); ax.imshow(matrix,aspect='auto',interpolation='nearest',cmap='viridis',vmin=0,vmax=45); ax.set_xlabel('Position'); ax.set_ylabel('Read'); fig.colorbar(ax.images[0],ax=ax,label='Phred quality')
+   max_reads=max(1,int(a.get('max_reads',1000)))
+   max_positions=max(1,int(a.get('max_positions',150)))
+   sampled=rs[:max_reads]
+   # Pad short reads with NaN so variable-length FASTQ records remain rectangular.
+   matrix=np.full((len(sampled),max_positions),np.nan,dtype=float)
+   for row,record in enumerate(sampled):
+    qualities=np.asarray(record.letter_annotations.get('phred_quality',()),dtype=float)[:max_positions]
+    matrix[row,:len(qualities)]=qualities
+   valid_counts=np.sum(~np.isnan(matrix),axis=0)
+   mean_quality=np.divide(np.nansum(matrix,axis=0),valid_counts,out=np.full(max_positions,np.nan),where=valid_counts>0)
+   valid_positions=np.flatnonzero(~np.isnan(mean_quality))
+   last_position=int(valid_positions[-1]+1) if len(valid_positions) else 0
+   display_matrix=matrix[:,:last_position] if last_position else matrix[:,:0]
+   im=ax.imshow(display_matrix,aspect='auto',interpolation='nearest',cmap='RdYlGn',vmin=0,vmax=40); ax.set_xlabel('测序位置'); ax.set_ylabel('抽样读段'); ax.set_title(f'FASTQ 质量热图（抽样 {len(sampled)} 条）'); fig.colorbar(im,ax=ax,label='Phred 质量值')
+   # Overlay the per-position mean and the conventional Q20 threshold.
+   if last_position:
+    positions=np.arange(last_position)
+    ax.plot(positions,mean_quality[:last_position],color='#111827',linewidth=1.6,label='逐位平均质量')
+    ax.axhline(20,color='#dc2626',linestyle='--',linewidth=1.1,label='Q20')
+    ax.legend(loc='upper right',frameon=True,facecolor='white',framealpha=.9)
   else:
    positions=[]
    for i in range(max(map(len,rs))):
     c=Counter(str(r.seq).upper()[i] for r in rs if i<len(r)); total=sum(c.values()); positions.append([c[b]/total if total else 0 for b in 'ACGTN'])
-   ax.stackplot(range(1,len(positions)+1),np.array(positions).T,labels=list('ACGTN')); ax.set_xlabel('Position'); ax.set_ylabel('Fraction'); ax.legend(loc='upper right')
-  fig.tight_layout(); fig.savefig(out,dpi=160); plt.close(fig); emit({'output_path':Path(out).name,'sequence_count':len(rs)}); return
+   ax.stackplot(range(1,len(positions)+1),np.array(positions).T,labels=list('ACGTN'),colors=['#2563eb','#16a34a','#f59e0b','#dc2626','#64748b']); ax.set_xlabel('测序位置'); ax.set_ylabel('碱基比例'); ax.set_ylim(0,1); ax.set_title('FASTQ 位点碱基组成'); ax.legend(loc='upper center',ncol=5,frameon=False)
+  finish_plot(fig,out)
+  interactive=None
+  if op=='sequence_quality_heatmap':
+   try:
+    import plotly.express as px
+    interactive=html_output(out)
+    chart=px.imshow(display_matrix,aspect='auto',color_continuous_scale='RdYlGn',zmin=0,zmax=40,labels={'x':'测序位置','y':'抽样读段','color':'Phred 质量值'},title='FASTQ 质量热图')
+    if last_position:
+     chart.add_scatter(x=list(range(last_position)),y=mean_quality[:last_position].tolist(),mode='lines',name='逐位平均质量',line={'color':'#111827','width':2})
+     chart.add_hline(y=20,line_dash='dash',line_color='#dc2626',annotation_text='Q20')
+    chart.write_html(interactive,include_plotlyjs='inline',full_html=True)
+   except Exception: pass
+  emit({'output_path':Path(out).name,'interactive_output_path':Path(interactive).name if interactive else None,'sequence_count':len(rs),'sampled_reads':len(sampled) if op=='sequence_quality_heatmap' else None,'positions':last_position if op=='sequence_quality_heatmap' else None,'mean_quality':mean_quality[:last_position].tolist() if op=='sequence_quality_heatmap' else None}); return
  fail('未知序列工具')
 if __name__=='__main__': main()

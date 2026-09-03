@@ -1,5 +1,6 @@
 import base64, importlib.util, json
 from pathlib import Path
+import pytest
 
 ROOT=Path(__file__).resolve().parents[2]; PLUGIN=ROOT/'tools/sequence'
 SPEC=importlib.util.spec_from_file_location('seq_ops',PLUGIN/'operations.py'); OPS=importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(OPS)
@@ -23,3 +24,16 @@ def test_sequence_kmer_and_cleanup(tmp_path):
 def test_blast_parser_and_visualizations(tmp_path):
     blast=tmp_path/'blast.tsv'; blast.write_text('q1\ts1\t98.0\t50\t1\t0\t1\t50\t10\t59\t1e-20\t100\nq1\ts2\t90.0\t30\t3\t0\t60\t89\t1\t30\t1e-8\t60\n')
     rows=OPS.blast_rows(blast); assert len(rows)==2 and rows[0]['qseqid']=='q1'
+
+def test_quality_heatmap_handles_variable_read_lengths(tmp_path, monkeypatch):
+    pytest.importorskip('Bio')
+    pytest.importorskip('matplotlib')
+    p=tmp_path/'variable.fastq'; out=tmp_path/'quality.png'
+    p.write_text('@r1\nACGT\n+\nIIII\n@r2\nAC\n+\nII\n')
+    old_argv=OPS.sys.argv
+    try:
+        OPS.sys.argv=['operations.py','sequence_quality_heatmap',base64.urlsafe_b64encode(json.dumps({'input_path':str(p),'output_path':str(out),'max_reads':10,'max_positions':6}).encode()).decode()]
+        OPS.main()
+    finally:
+        OPS.sys.argv=old_argv
+    assert out.exists() and out.stat().st_size > 0

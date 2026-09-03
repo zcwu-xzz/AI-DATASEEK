@@ -69,6 +69,7 @@ _MAX_ARCHIVE_FILES = 10000
 _MAX_MOLECULAR_PREVIEW_BYTES = 50 * 1024 * 1024
 _MOLECULAR_FORMATS = {
     ".cif": "cif",
+    ".mmcif": "cif",
     ".pdb": "pdb",
     ".ent": "pdb",
     ".mol": "sdf",

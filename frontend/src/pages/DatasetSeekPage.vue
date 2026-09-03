@@ -1059,7 +1059,7 @@ async function openShapefilePreview() {
 
 function openMolecularPreview() {
   const outputFiles = messages.value.flatMap(message => message.type === 'attachments' && (message.content as AttachmentsContent).role === 'assistant' ? attachmentFiles(message) : []);
-  const candidates = outputFiles.filter(file => /\.(?:cif|pdb|ent|mol|sdf|xyz|mol2|vasp)$/i.test(file.filename) || /(?:^|[\\/])(poscar|contcar)$/i.test(file.filename));
+  const candidates = outputFiles.filter(file => /\.(?:cif|mmcif|pdb|ent|mol|sdf|xyz|mol2|vasp)$/i.test(file.filename) || /(?:^|[\\/])(poscar|contcar)$/i.test(file.filename));
   const source = candidates[candidates.length - 1];
   if (source) showFilePanel(source, candidates);
 }

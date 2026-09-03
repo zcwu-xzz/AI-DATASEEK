@@ -1,1 +1,2 @@
 biopython==1.85
+plotly==6.1.1

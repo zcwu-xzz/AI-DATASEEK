@@ -1,4 +1,6 @@
-astropy==7.1.0
+# Sandbox runtime currently targets Python 3.10; Astropy 7 requires Python
+# 3.11+, so keep the plugin compatible with the supported image.
+astropy==6.1.7
 cdflib==1.3.6
 skyfield==1.53
 sgp4==2.25

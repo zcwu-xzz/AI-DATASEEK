@@ -153,7 +153,17 @@ def main():
     elif op=="molecular_visualize":
         import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
         points=coords(atoms)[:int(args.get("max_atoms",2000))]; out=Path(args["output_path"]); out.parent.mkdir(parents=True,exist_ok=True); fig=plt.figure(figsize=(8,6)); ax=fig.add_subplot(111,projection="3d")
-        colors={"H":"#f0f0f0","C":"#444444","N":"#356ae6","O":"#e33b3b","S":"#e5b82e"}; ax.scatter([p[0] for p in points],[p[1] for p in points],[p[2] for p in points],c=[colors.get(a["element"],"#58a56f") for a in atoms[:len(points)]],s=24); ax.set_xlabel("X (Å)"); ax.set_ylabel("Y (Å)"); ax.set_zlabel("Z (Å)"); fig.tight_layout(); fig.savefig(out,dpi=150); plt.close(fig); result={"success":True,"atom_count_plotted":len(points),"output_path":out.name}
+        colors={"H":"#f0f0f0","C":"#444444","N":"#356ae6","O":"#e33b3b","S":"#e5b82e"}; ax.scatter([p[0] for p in points],[p[1] for p in points],[p[2] for p in points],c=[colors.get(a["element"],"#58a56f") for a in atoms[:len(points)]],s=24); ax.set_xlabel("X (Å)"); ax.set_ylabel("Y (Å)"); ax.set_zlabel("Z (Å)"); fig.tight_layout(); fig.savefig(out,dpi=150); plt.close(fig)
+        result={"success":True,"atom_count_plotted":len(points),"output_path":out.name}
+        try:
+            import plotly.graph_objects as go
+            html=out.with_suffix('.html')
+            chart=go.Figure(go.Scatter3d(x=[p[0] for p in points],y=[p[1] for p in points],z=[p[2] for p in points],mode='markers',text=[f"{a.get('element','X')} {i+1}" for i,a in enumerate(atoms[:len(points)])],marker={'size':4,'color':[colors.get(a['element'],'#58a56f') for a in atoms[:len(points)]], 'line':{'width':0}}))
+            chart.update_layout(title={'text':path.name,'x':0.02,'xanchor':'left'},height=760,autosize=True,margin={'l':0,'r':0,'t':58,'b':105},scene={'aspectmode':'data','xaxis_title':'X (Å)','yaxis_title':'Y (Å)','zaxis_title':'Z (Å)'})
+            chart.write_html(str(html),include_plotlyjs='inline',full_html=True,config={'responsive':True,'displaylogo':False})
+            result['interactive_output_path']=html.name
+        except Exception as exc:
+            result['interactive_output_error']=str(exc)
     elif op=="molecular_split_sdf":
         out=Path(args["output_dir"]); out.mkdir(parents=True,exist_ok=True); records=[r.strip()+"\n$$$$\n" for r in text.split("$$$$") if r.strip()][:int(args.get("max_records",1000))]; files=[]
         for i,record in enumerate(records,1): p=out/f"molecule-{i:04d}.sdf"; p.write_text(record,encoding="utf-8"); files.append(p.name)

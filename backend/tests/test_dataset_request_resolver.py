@@ -76,6 +76,27 @@ class _EmptyPolicyStore:
         return []
 
 
+class _BareStringGatewayModel:
+    def __init__(self, response: str):
+        self.response = response
+        self.structured_calls = 0
+        self.fallback_calls = 0
+
+    def bind(self, **_kwargs):
+        parent = self
+
+        class _BrokenStructuredRunnable:
+            async def ainvoke(self, _messages):
+                parent.structured_calls += 1
+                raise AttributeError("'str' object has no attribute 'choices'")
+
+        return _BrokenStructuredRunnable()
+
+    async def ainvoke(self, _messages):
+        self.fallback_calls += 1
+        return self.response
+
+
 def _resolver() -> DatasetRequestResolver:
     resolver = DatasetRequestResolver()
     resolver._policy_store = _EmptyPolicyStore()
@@ -118,6 +139,28 @@ async def test_resolver_answers_from_user_text_without_catalog_or_sandbox(monkey
     assert resolution.mode == "direct"
     assert resolution.answer == "文件后缀名是 `.nc`。"
     assert model.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_resolver_normalizes_bare_string_gateway_fallback(monkeypatch):
+    model = _BareStringGatewayModel(
+        '{"safety":{"decision":"allow","risk_level":"low","categories":[],"reason":"","suggestion":""},'
+        '"execution":{"mode":"direct","required_evidence":"user_message","required_capabilities":[],"requires_artifacts":false},'
+        '"answer":"已创建合理的人类 FASTA 示例。","catalog_queries":[],"reason":"直接回答"}'
+    )
+    monkeypatch.setattr(resolver_module, "create_chat_model", lambda *_args, **_kwargs: model)
+    monkeypatch.setattr(resolver_module, "get_settings", lambda: SimpleNamespace(dataset_request_resolver_timeout_seconds=1))
+
+    resolution = await _resolver().resolve(
+        question="给我创建一个合理的人类测序 fasta 文件",
+        datasets=[_dataset()],
+        events=[],
+    )
+
+    assert resolution.mode == "direct"
+    assert resolution.answer == "已创建合理的人类 FASTA 示例。"
+    assert model.structured_calls == 0
+    assert model.fallback_calls == 1
 
 
 @pytest.mark.asyncio

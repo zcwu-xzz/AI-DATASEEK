@@ -49,8 +49,8 @@ def create_chat_model(settings: Settings, overrides: Optional[dict] = None) -> B
     if api_key and provider in {"openai", "azure_openai", "xai", "perplexity"}:
         kwargs["api_key"] = api_key
 
-    return init_chat_model(
-        **kwargs,
-        extra_body={"thinking": {"type": "disabled"}},
-        model_provider=provider,
-    )
+    # Do not send DeepSeek-specific extensions through generic OpenAI
+    # compatible gateways. Several gateways return a non-standard response
+    # (choices entries as strings) when they receive the unsupported
+    # ``thinking`` field, which breaks LangChain response deserialization.
+    return init_chat_model(**kwargs, model_provider=provider)
