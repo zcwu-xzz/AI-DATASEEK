@@ -201,5 +201,80 @@ def main():
     chart.write_html(interactive,include_plotlyjs='inline',full_html=True)
    except Exception: pass
   emit({'output_path':Path(out).name,'interactive_output_path':Path(interactive).name if interactive else None,'sequence_count':len(rs),'sampled_reads':len(sampled) if op=='sequence_quality_heatmap' else None,'positions':last_position if op=='sequence_quality_heatmap' else None,'mean_quality':mean_quality[:last_position].tolist() if op=='sequence_quality_heatmap' else None}); return
+ if op=='sequence_subsequence_extract':
+  from Bio.SeqRecord import SeqRecord
+  found=next((r for r in rs if r.id==a['sequence_id']),None)
+  if found is None: fail(f"未找到序列: {a['sequence_id']}")
+  start=max(1,int(a.get('start',1))); end=min(len(found),int(a['end']) if a.get('end') is not None else len(found))
+  if end<start: fail('提取坐标范围无效')
+  seq=found.seq[start-1:end]; strand=a.get('strand','+')
+  if strand=='-': seq=seq.reverse_complement()
+  result=SeqRecord(seq,id=f'{found.id}:{start}-{end}({strand})',description='')
+  write_records([result],out); emit({'output_path':Path(out).name,'sequence_id':found.id,'start':start,'end':end,'strand':strand,'length':len(seq)}); return
+ if op=='sequence_motif_search':
+  motif=str(a.get('motif','')).upper()
+  if not motif: fail('motif 不能为空')
+  if a.get('mode','iupac')=='iupac':
+   codes={'A':'A','C':'C','G':'G','T':'T','U':'[TU]','R':'[AG]','Y':'[CT]','S':'[GC]','W':'[AT]','K':'[GT]','M':'[AC]','B':'[CGT]','D':'[AGT]','H':'[ACT]','V':'[ACG]','N':'[ACGT]'}
+   try: pattern=''.join(codes[c] for c in motif)
+   except KeyError as e: fail(f'IUPAC 基序包含无效字符: {e.args[0]}')
+  else: pattern=motif
+  try: regex=re.compile(f'(?=({pattern}))',re.I)
+  except re.error as e: fail(f'正则表达式无效: {e}')
+  from Bio.Seq import Seq
+  reverse=str(Seq(motif).reverse_complement()) if a.get('mode','iupac')=='iupac' else None
+  reverse_regex=re.compile(f'(?=({"".join(codes[c] for c in reverse)}))',re.I) if reverse and reverse!=motif and a.get('both_strands',True) else None
+  limit=max(1,min(100000,int(a.get('max_hits',10000)))); hits=[]; total=0
+  for record in rs:
+   sequence=str(record.seq).upper()
+   for strand,matcher in [('+',regex),('-',reverse_regex)]:
+    if matcher is None: continue
+    for match in matcher.finditer(sequence):
+     total+=1
+     if len(hits)<limit: hits.append({'sequence_id':record.id,'start':match.start()+1,'end':match.start()+len(match.group(1)),'strand':strand,'match':match.group(1)})
+  emit({'motif':motif,'hit_count':total,'returned_hits':len(hits),'truncated':total>len(hits),'hits':hits}); return
+ if op in {'sequence_orf_find','sequence_translate'}:
+  from Bio.Seq import Seq
+  from Bio.SeqRecord import SeqRecord
+  table=int(a.get('genetic_code',1)); proteins=[]
+  if op=='sequence_translate':
+   frame=max(1,min(6,int(a.get('frame',1))))
+   for record in rs:
+    nucleotide=record.seq if frame<=3 else record.seq.reverse_complement(); offset=(frame-1)%3; translated=nucleotide[offset:].translate(table=table,to_stop=bool(a.get('to_stop',False)))
+    proteins.append(SeqRecord(translated,id=f'{record.id}|frame={frame}',description=''))
+  else:
+   minimum=max(1,int(a.get('min_amino_acids',30)))
+   for record in rs:
+    for strand,nucleotide in [('+',record.seq),('-',record.seq.reverse_complement())]:
+     for offset in range(3):
+      translated=str(nucleotide[offset:].translate(table=table)); cursor=0
+      for peptide in translated.split('*'):
+       aa_start=cursor; cursor+=len(peptide)+1
+       methionine=peptide.find('M')
+       if methionine<0 or len(peptide)-methionine<minimum: continue
+       protein=peptide[methionine:]; nt_start=offset+(aa_start+methionine)*3
+       nt_end=nt_start+len(protein)*3
+       if strand=='-': start=len(record)-nt_end+1; end=len(record)-nt_start
+       else: start=nt_start+1; end=nt_end
+       proteins.append(SeqRecord(Seq(protein),id=f'{record.id}|orf={strand}{offset+1}|{start}-{end}',description=''))
+  write_records(proteins,out); emit({'output_path':Path(out).name,'protein_count':len(proteins),'genetic_code':table}); return
+ if op=='sequence_codon_usage':
+  from Bio.Data import CodonTable
+  frame=max(1,min(3,int(a.get('frame',1)))); table=CodonTable.unambiguous_dna_by_id[int(a.get('genetic_code',1))]; codons=Counter()
+  for record in rs:
+   seq=str(record.seq).upper().replace('U','T')[frame-1:]
+   codons.update(seq[index:index+3] for index in range(0,len(seq)-2,3) if set(seq[index:index+3])<=set('ACGT'))
+  total=sum(codons.values()); amino=Counter(table.forward_table.get(codon,'Stop') for codon,count in codons.items() for _ in range(count))
+  emit({'frame':frame,'total_codons':total,'stop_codons':sum(codons[c] for c in table.stop_codons),'codons':[{'codon':c,'count':n,'fraction':n/total if total else 0,'amino_acid':table.forward_table.get(c,'Stop')} for c,n in codons.most_common()],'amino_acids':dict(amino)}); return
+ if op=='sequence_pairwise_identity':
+  other=records(a['other_path']); left=next((r for r in rs if r.id==a.get('sequence_id')),rs[0] if rs else None); right=next((r for r in other if r.id==a.get('other_sequence_id')),other[0] if other else None)
+  if left is None or right is None: fail('两个输入文件都必须包含至少一条序列')
+  from Bio.Align import PairwiseAligner
+  aligner=PairwiseAligner(mode='global'); alignment=aligner.align(left.seq,right.seq)[0]; coordinates=alignment.coordinates; aligned=matches=mismatches=gaps=0
+  for index in range(coordinates.shape[1]-1):
+   l0,l1=coordinates[0,index:index+2]; r0,r1=coordinates[1,index:index+2]
+   if l1==l0 or r1==r0: gaps+=max(l1-l0,r1-r0); aligned+=max(l1-l0,r1-r0); continue
+   span=min(l1-l0,r1-r0); aseq=str(left.seq[l0:l0+span]).upper(); bseq=str(right.seq[r0:r0+span]).upper(); same=sum(x==y for x,y in zip(aseq,bseq)); matches+=same; mismatches+=span-same; aligned+=span
+  emit({'sequence_id':left.id,'other_sequence_id':right.id,'aligned_length':int(aligned),'matches':int(matches),'mismatches':int(mismatches),'gap_bases':int(gaps),'identity_percent':matches/max(aligned-gaps,1)*100,'alignment_score':float(alignment.score)}); return
  fail('未知序列工具')
 if __name__=='__main__': main()

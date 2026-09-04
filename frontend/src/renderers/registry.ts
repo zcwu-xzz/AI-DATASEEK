@@ -7,7 +7,9 @@ import ShapefilePreview from '@/components/filePreviews/ShapefilePreview.vue';
 import HtmlFilePreview from '@/components/filePreviews/HtmlFilePreview.vue';
 import MolecularStructurePreview from '@/components/filePreviews/MolecularStructurePreview.vue';
 import FastaSequencePreview from '@/components/filePreviews/FastaSequencePreview.vue';
-import BioTextPreview from '@/components/filePreviews/BioTextPreview.vue';
+import GenomeBrowserPreview from '@/components/filePreviews/GenomeBrowserPreview.vue';
+import BlastAlignmentPreview from '@/components/filePreviews/BlastAlignmentPreview.vue';
+import AlignmentFilePreview from '@/components/filePreviews/AlignmentFilePreview.vue';
 import type { RendererInfo } from '@/api/renderer';
 
 export type RendererKind = 'builtin' | 'api' | 'component';
@@ -34,12 +36,20 @@ export interface RendererDefinition {
 
 const builtinRenderers: RendererDefinition[] = [
   {
+    id: 'builtin-binary-alignment', name: 'SAM/BAM/CRAM Alignment Renderer', description: 'Interactive regional coverage and read alignment browser.', kind: 'builtin',
+    extensions: ['sam', 'bam', 'cram'], preview: AlignmentFilePreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
+  },
+  {
     id: 'builtin-fasta-sequence', name: 'FASTA Sequence Renderer', description: 'Ruler-based FASTA sequence browser.', kind: 'builtin',
     extensions: ['fasta', 'fa', 'fna', 'ffn', 'frn', 'fastq', 'fq'], preview: FastaSequencePreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
   },
   {
     id: 'builtin-bio-text', name: 'Biological Text Renderer', description: 'Structured preview for VCF, GFF/GTF, BED and SAM files.', kind: 'builtin',
-    extensions: ['vcf', 'gff', 'gff3', 'gtf', 'bed', 'sam', 'wig', 'bedgraph'], preview: BioTextPreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
+    extensions: ['vcf', 'gff', 'gff3', 'gtf', 'bed', 'wig', 'bedgraph'], preview: GenomeBrowserPreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
+  },
+  {
+    id: 'builtin-blast-alignment', name: 'BLAST Alignment Renderer', description: 'Interactive BLAST tabular hit browser.', kind: 'builtin',
+    extensions: ['blast', 'blast6', 'm8', 'blasttab', 'tab'], preview: BlastAlignmentPreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
   },
   {
     id: 'builtin-molecular-structure',

@@ -40,6 +40,7 @@ dependencies = [
     "sse-starlette>=3.0.3",
     "uvicorn>=0.38.0",
     "websockets>=15.0.1",
+    "pysam==0.22.1",
 ]
 
 [dependency-groups]

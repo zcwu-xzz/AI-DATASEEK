@@ -5,9 +5,9 @@ import pytest
 ROOT=Path(__file__).resolve().parents[2]; PLUGIN=ROOT/'tools/sequence'
 SPEC=importlib.util.spec_from_file_location('seq_ops',PLUGIN/'operations.py'); OPS=importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(OPS)
 
-def test_sequence_manifest_has_25_tools():
+def test_sequence_manifest_has_expected_tools():
     m=json.loads((PLUGIN/'manifest.json').read_text()); names={x['name'] for x in m['tools']}
-    assert len(names)==32 and 'sequence_fastqc_report' in names
+    assert len(names)==38 and 'sequence_fastqc_report' in names
 
 def test_sequence_summary_and_validation(tmp_path):
     p=tmp_path/'reads.fastq'; p.write_text('@r1\nACGTN\n+\nIIIII\n@r2\nGGCCA\n+\n#####\n')

@@ -11,7 +11,9 @@ import ShapefilePreview from '../components/filePreviews/ShapefilePreview.vue';
 import HtmlFilePreview from '../components/filePreviews/HtmlFilePreview.vue';
 import CsvFilePreview from '../components/filePreviews/CsvFilePreview.vue';
 import FastaSequencePreview from '../components/filePreviews/FastaSequencePreview.vue';
-import BioTextPreview from '../components/filePreviews/BioTextPreview.vue';
+import GenomeBrowserPreview from '../components/filePreviews/GenomeBrowserPreview.vue';
+import BlastAlignmentPreview from '../components/filePreviews/BlastAlignmentPreview.vue';
+import AlignmentFilePreview from '../components/filePreviews/AlignmentFilePreview.vue';
 import { findRendererByFilename } from '@/renderers/registry';
 
 export interface FileType {
@@ -64,8 +66,14 @@ export const getFileType = (filename: string): FileType => {
   if (['fasta', 'fa', 'fna', 'ffn', 'frn', 'fastq', 'fq'].includes(biologicalExtension)) {
     return { icon: FileIcon, preview: FastaSequencePreview };
   }
-  if (['vcf', 'gff', 'gff3', 'gtf', 'bed', 'sam', 'wig', 'bedgraph'].includes(biologicalExtension)) {
-    return { icon: FileIcon, preview: BioTextPreview };
+  if (['vcf', 'gff', 'gff3', 'gtf', 'bed', 'wig', 'bedgraph'].includes(biologicalExtension)) {
+    return { icon: FileIcon, preview: GenomeBrowserPreview };
+  }
+  if (['blast', 'blast6', 'm8', 'blasttab', 'tab'].includes(biologicalExtension)) {
+    return { icon: FileIcon, preview: BlastAlignmentPreview };
+  }
+  if (['sam', 'bam', 'cram'].includes(biologicalExtension)) {
+    return { icon: FileIcon, preview: AlignmentFilePreview };
   }
   const renderer = findRendererByFilename(filename);
   if (renderer) {

@@ -52,7 +52,7 @@ def test_gdal_remains_importable_with_locked_numpy():
 def test_rasterio_reads_a_geotiff_alongside_system_gdal():
     import numpy
     import rasterio
-    from osgeo import gdal
+    gdal = pytest.importorskip("osgeo.gdal")
     from rasterio.io import MemoryFile
 
     pixels = numpy.arange(12, dtype="float32").reshape(1, 3, 4)

@@ -172,7 +172,9 @@ RUN test -s /opt/ai-dataseek/tools/sequence/requirements.txt && \
     -r /opt/ai-dataseek/tools/molecular/requirements.txt \
     -r /opt/ai-dataseek/tools/pxp/requirements.txt \
     -r /opt/ai-dataseek/tools/sequence/requirements.txt \
+    -r /opt/ai-dataseek/tools/sequence_advanced/requirements.txt \
     -r /opt/ai-dataseek/tools/alignment/requirements.txt \
+    -r /opt/ai-dataseek/tools/alignment_advanced/requirements.txt \
     -r /opt/ai-dataseek/tools/genome_annotation/requirements.txt \
     -r /opt/ai-dataseek/tools/biomolecular_structure/requirements.txt \
     -r /opt/ai-dataseek/tools/space/requirements.txt

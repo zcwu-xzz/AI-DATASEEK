@@ -38,6 +38,7 @@ dependencies = [
     { name = "pyjwt", extra = ["crypto"] },
     { name = "pymongo" },
     { name = "pypdf" },
+    { name = "pysam" },
     { name = "python-docx" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
@@ -86,6 +87,7 @@ requires-dist = [
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.8.0" },
     { name = "pymongo", specifier = ">=4.14.0" },
     { name = "pypdf", specifier = ">=5.0.0" },
+    { name = "pysam", specifier = "==0.22.1" },
     { name = "python-docx", specifier = ">=1.1.0" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "python-multipart", specifier = ">=0.0.20" },
@@ -109,7 +111,7 @@ dev = [
 [[package]]
 name = "aiofiles"
 version = "25.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/41/c3/534eac40372d8ee36ef40df62ec129bee4fdb5ad9706e58a29be53b2c970/aiofiles-25.1.0.tar.gz", hash = "sha256:a8d728f0a29de45dc521f18f07297428d56992a742f0cd2701ba86e44d23d5b2" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/bc/8a/340a1555ae33d7354dbca4faa54948d76d89a27ceef032c8c3bc661d003e/aiofiles-25.1.0-py3-none-any.whl", hash = "sha256:abe311e527c862958650f9438e859c1fa7568a141b22abcd015e120e86a85695" },
@@ -118,7 +120,7 @@ wheels = [
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.6.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/33/c6/61a2d7b7572279226bb2e7f61d7a19ca7c90da0329c93fa0d560cbf288d8/aiohappyeyeballs-2.6.2.tar.gz", hash = "sha256:e202810ee718bd01fc6ef49e8ea53d023d5cb6b581076d7925aa499fa55dbe64" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/5f/fc/a7bf5b6e4e617b45f90f2d9d2a68519c249c81dd4fc2658c7a2a61c4f4b7/aiohappyeyeballs-2.6.2-py3-none-any.whl", hash = "sha256:4708045e2d7a6c6bdf8aafa8ed39649eaf926a4543b54560659129e3365953c4" },
@@ -127,7 +129,7 @@ wheels = [
 [[package]]
 name = "aiohttp"
 version = "3.13.4"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "aiohappyeyeballs" },
     { name = "aiosignal" },
@@ -212,7 +214,7 @@ wheels = [
 [[package]]
 name = "aiosignal"
 version = "1.4.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "frozenlist" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
@@ -225,7 +227,7 @@ wheels = [
 [[package]]
 name = "annotated-doc"
 version = "0.0.4"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/57/ba/046ceea27344560984e26a590f90bc7f4a75b06701f653222458922b558c/annotated_doc-0.0.4.tar.gz", hash = "sha256:fbcda96e87e9c92ad167c2e53839e57503ecfda18804ea28102353485033faa4" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/1e/d3/26bf1008eb3d2daa8ef4cacc7f3bfdc11818d111f7e2d0201bc6e3b49d45/annotated_doc-0.0.4-py3-none-any.whl", hash = "sha256:571ac1dc6991c450b25a9c2d84a3705e2ae7a53467b5d111c24fa8baabbed320" },
@@ -234,7 +236,7 @@ wheels = [
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53" },
@@ -243,7 +245,7 @@ wheels = [
 [[package]]
 name = "anthropic"
 version = "0.76.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "distro" },
@@ -262,7 +264,7 @@ wheels = [
 [[package]]
 name = "anyio"
 version = "4.12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "idna" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
@@ -275,7 +277,7 @@ wheels = [
 [[package]]
 name = "argon2-cffi"
 version = "25.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "argon2-cffi-bindings" },
 ]
@@ -287,7 +289,7 @@ wheels = [
 [[package]]
 name = "argon2-cffi-bindings"
 version = "25.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "cffi" },
 ]
@@ -318,7 +320,7 @@ wheels = [
 [[package]]
 name = "async-lru"
 version = "2.3.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/e8/1f/989ecfef8e64109a489fff357450cb73fa73a865a92bd8c272170a6922c2/async_lru-2.3.0.tar.gz", hash = "sha256:89bdb258a0140d7313cf8f4031d816a042202faa61d0ab310a0a538baa1c24b6" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/e5/e2/c2e3abf398f80732e58b03be77bde9022550d221dd8781bf586bd4d97cc1/async_lru-2.3.0-py3-none-any.whl", hash = "sha256:eea27b01841909316f2cc739807acea1c623df2be8c5cfad7583286397bb8315" },
@@ -327,7 +329,7 @@ wheels = [
 [[package]]
 name = "attrs"
 version = "26.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/9a/8e/82a0fe20a541c03148528be8cac2408564a6c9a0cc7e9171802bc1d26985/attrs-26.1.0.tar.gz", hash = "sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl", hash = "sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309" },
@@ -336,7 +338,7 @@ wheels = [
 [[package]]
 name = "backoff"
 version = "2.2.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/47/d7/5bbeb12c44d7c4f2fb5b56abce497eb5ed9f34d85701de869acedd602619/backoff-2.2.1.tar.gz", hash = "sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/df/73/b6e24bd22e6720ca8ee9a85a0c4a2971af8497d8f3193fa05390cbd46e09/backoff-2.2.1-py3-none-any.whl", hash = "sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8" },
@@ -345,7 +347,7 @@ wheels = [
 [[package]]
 name = "beanie"
 version = "2.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "click" },
     { name = "lazy-model" },
@@ -361,7 +363,7 @@ wheels = [
 [[package]]
 name = "beautifulsoup4"
 version = "4.14.3"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "soupsieve" },
     { name = "typing-extensions" },
@@ -374,7 +376,7 @@ wheels = [
 [[package]]
 name = "browser-use"
 version = "0.12.8"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "anthropic" },
@@ -420,7 +422,7 @@ wheels = [
 [[package]]
 name = "browser-use-sdk"
 version = "3.4.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
@@ -433,7 +435,7 @@ wheels = [
 [[package]]
 name = "bubus"
 version = "1.5.6"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "aiofiles" },
     { name = "anyio" },
@@ -450,7 +452,7 @@ wheels = [
 [[package]]
 name = "cdp-use"
 version = "1.4.5"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "typing-extensions" },
@@ -464,7 +466,7 @@ wheels = [
 [[package]]
 name = "certifi"
 version = "2026.5.20"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/f3/ce/ee2ecad540810a79593028e88299baeae54d346cc7a0d94b6199988b89b1/certifi-2026.5.20.tar.gz", hash = "sha256:69dea482ab64caa7b9f6aba1c6bf48bb6a5448d1c0f1b17ab42ad8c763a5344d" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/59/8c/57e832b7af6d7c5abe66eb3fbe3a3a32f4d11ea23a1aa7131371035be991/certifi-2026.5.20-py3-none-any.whl", hash = "sha256:3c52e209ba0a4ad7aebe60436a4ab349c39e1e602e8c134221e546902ad25897" },
@@ -473,7 +475,7 @@ wheels = [
 [[package]]
 name = "cffi"
 version = "2.0.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pycparser", marker = "implementation_name != 'PyPy'" },
 ]
@@ -530,7 +532,7 @@ wheels = [
 [[package]]
 name = "charset-normalizer"
 version = "3.4.7"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/e7/a1/67fe25fac3c7642725500a3f6cfe5821ad557c3abb11c9d20d12c7008d3e/charset_normalizer-3.4.7.tar.gz", hash = "sha256:ae89db9e5f98a11a4bf50407d4363e7b09b31e55bc117b4f7d80aab97ba009e5" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/0c/eb/4fc8d0a7110eb5fc9cc161723a34a8a6c200ce3b4fbf681bc86feee22308/charset_normalizer-3.4.7-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:eca9705049ad3c7345d574e3510665cb2cf844c2f2dcfe675332677f081cbd46" },
@@ -603,7 +605,7 @@ wheels = [
 [[package]]
 name = "click"
 version = "8.3.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
@@ -615,7 +617,7 @@ wheels = [
 [[package]]
 name = "cloudpickle"
 version = "3.1.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/27/fb/576f067976d320f5f0114a8d9fa1215425441bb35627b1993e5afd8111e5/cloudpickle-3.1.2.tar.gz", hash = "sha256:7fda9eb655c9c230dab534f1983763de5835249750e85fbcef43aaa30a9a2414" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/88/39/799be3f2f0f38cc727ee3b4f1445fe6d5e4133064ec2e4115069418a5bb6/cloudpickle-3.1.2-py3-none-any.whl", hash = "sha256:9acb47f6afd73f60dc1df93bb801b472f05ff42fa6c84167d25cb206be1fbf4a" },
@@ -624,7 +626,7 @@ wheels = [
 [[package]]
 name = "colorama"
 version = "0.4.6"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6" },
@@ -633,7 +635,7 @@ wheels = [
 [[package]]
 name = "coverage"
 version = "7.14.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/23/7f/d0720730a397a999ffc0fd3f5bebef347338e3a47b727da66fbb228e2ff2/coverage-7.14.0.tar.gz", hash = "sha256:057a6af2f160a85384cde4ab36f0d2777bae1057bae255f95413cdd382aa5c74" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/09/1e/2f996b2c8415cbb6f54b0f5ec1ee850c96d7911961afb4fc05f4a89d8c58/coverage-7.14.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:7ffd19fc8aed057fd686a17a4935eef5f9859d69208f96310e893e64b9b6ccf5" },
@@ -717,7 +719,7 @@ wheels = [
 [[package]]
 name = "cryptography"
 version = "48.0.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
 ]
@@ -770,7 +772,7 @@ wheels = [
 [[package]]
 name = "curl-cffi"
 version = "0.15.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "cffi" },
@@ -803,7 +805,7 @@ wheels = [
 [[package]]
 name = "cython"
 version = "3.2.5"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/3f/3b/ebd94c8b85f8e41b5015a9ed94ee3df866024d480d05cd08b774684fb81d/cython-3.2.5.tar.gz", hash = "sha256:3dd42e4cf36ad15f265bdfec2337cc00c688c8eb6d374ffd13bb19437c27bba1" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/20/a6/efc97000fdb2f34e2431eb09a6ab4de9fbd3bcdb73a8f9d224afa4a9abd3/cython-3.2.5-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:eb38b89e5a8eb2508a1a0832063826b0703dfb02be84e4aa34b8818ce0ca50fe" },
@@ -816,7 +818,7 @@ wheels = [
 [[package]]
 name = "debugpy"
 version = "1.8.20"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/e0/b7/cd8080344452e4874aae67c40d8940e2b4d47b01601a8fd9f44786c757c7/debugpy-1.8.20.tar.gz", hash = "sha256:55bc8701714969f1ab89a6d5f2f3d40c36f91b2cbe2f65d98bf8196f6a6a2c33" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/14/57/7f34f4736bfb6e00f2e4c96351b07805d83c9a7b33d28580ae01374430f7/debugpy-1.8.20-cp312-cp312-macosx_15_0_universal2.whl", hash = "sha256:4ae3135e2089905a916909ef31922b2d733d756f66d87345b3e5e52b7a55f13d" },
@@ -837,7 +839,7 @@ wheels = [
 [[package]]
 name = "distro"
 version = "1.9.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/fc/f8/98eea607f65de6527f8a2e8885fc8015d3e6f5775df186e443e0964a11c3/distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2" },
@@ -846,7 +848,7 @@ wheels = [
 [[package]]
 name = "dnspython"
 version = "2.8.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/8c/8b/57666417c0f90f08bcafa776861060426765fdb422eb10212086fb811d26/dnspython-2.8.0.tar.gz", hash = "sha256:181d3c6996452cb1189c4046c61599b84a5a86e099562ffde77d26984ff26d0f" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/ba/5a/18ad964b0086c6e62e2e7500f7edc89e3faa45033c71c1893d34eed2b2de/dnspython-2.8.0-py3-none-any.whl", hash = "sha256:01d9bbc4a2d76bf0db7c1f729812ded6d912bd318d3b1cf81d30c0f845dbf3af" },
@@ -855,7 +857,7 @@ wheels = [
 [[package]]
 name = "docker"
 version = "7.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "requests" },
@@ -869,7 +871,7 @@ wheels = [
 [[package]]
 name = "docstring-parser"
 version = "0.18.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/e0/4d/f332313098c1de1b2d2ff91cf2674415cc7cddab2ca1b01ae29774bd5fdf/docstring_parser-0.18.0.tar.gz", hash = "sha256:292510982205c12b1248696f44959db3cdd1740237a968ea1e2e7a900eeb2015" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/a7/5f/ed01f9a3cdffbd5a008556fc7b2a08ddb1cc6ace7effa7340604b1d16699/docstring_parser-0.18.0-py3-none-any.whl", hash = "sha256:b3fcbed555c47d8479be0796ef7e19c2670d428d72e96da63f3a40122860374b" },
@@ -878,7 +880,7 @@ wheels = [
 [[package]]
 name = "fastapi"
 version = "0.136.3"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "annotated-doc" },
     { name = "pydantic" },
@@ -894,7 +896,7 @@ wheels = [
 [[package]]
 name = "frozenlist"
 version = "1.8.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/2d/f5/c831fac6cc817d26fd54c7eaccd04ef7e0288806943f7cc5bbf69f3ac1f0/frozenlist-1.8.0.tar.gz", hash = "sha256:3ede829ed8d842f6cd48fc7081d7a41001a56f1f38603f9d49bf3020d59a31ad" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/69/29/948b9aa87e75820a38650af445d2ef2b6b8a6fab1a23b6bb9e4ef0be2d59/frozenlist-1.8.0-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:78f7b9e5d6f2fdb88cdde9440dc147259b62b9d3b019924def9f6478be254ac1" },
@@ -983,7 +985,7 @@ wheels = [
 [[package]]
 name = "google-api-core"
 version = "2.29.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "google-auth" },
     { name = "googleapis-common-protos" },
@@ -999,7 +1001,7 @@ wheels = [
 [[package]]
 name = "google-api-python-client"
 version = "2.188.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "google-api-core" },
     { name = "google-auth" },
@@ -1015,7 +1017,7 @@ wheels = [
 [[package]]
 name = "google-auth"
 version = "2.48.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "pyasn1-modules" },
@@ -1034,7 +1036,7 @@ requests = [
 [[package]]
 name = "google-auth-httplib2"
 version = "0.4.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "google-auth" },
     { name = "httplib2" },
@@ -1047,7 +1049,7 @@ wheels = [
 [[package]]
 name = "google-auth-oauthlib"
 version = "1.2.4"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "google-auth" },
     { name = "requests-oauthlib" },
@@ -1060,7 +1062,7 @@ wheels = [
 [[package]]
 name = "google-genai"
 version = "1.65.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "distro" },
@@ -1081,7 +1083,7 @@ wheels = [
 [[package]]
 name = "googleapis-common-protos"
 version = "1.75.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "protobuf" },
 ]
@@ -1093,7 +1095,7 @@ wheels = [
 [[package]]
 name = "greenlet"
 version = "3.5.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/6d/6e/802acd792aebb2256fbbee8cacf2727faaeb6f240ac11008f09eae4414bc/greenlet-3.5.1.tar.gz", hash = "sha256:5a56aeb7d5d9cc4b3a735efb5095bd4b4f6f0e4f93e5ca876d0e2315137b7829" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/c4/37/4549f149c9797c21b32c2683c33522af22522099de128b2406672526d005/greenlet-3.5.1-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:fa4f98af3a528f0c3fd592a26df7f376f93329c8f4d987f6bb979057af8bf5e2" },
@@ -1160,7 +1162,7 @@ wheels = [
 [[package]]
 name = "groq"
 version = "1.0.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "distro" },
@@ -1177,7 +1179,7 @@ wheels = [
 [[package]]
 name = "h11"
 version = "0.16.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/01/ee/02a2c011bdab74c6fb3c75474d40b3052059d95df7e73351460c8588d963/h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86" },
@@ -1186,7 +1188,7 @@ wheels = [
 [[package]]
 name = "httpcore"
 version = "1.0.9"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "h11" },
@@ -1199,7 +1201,7 @@ wheels = [
 [[package]]
 name = "httplib2"
 version = "0.31.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyparsing" },
 ]
@@ -1211,7 +1213,7 @@ wheels = [
 [[package]]
 name = "httpx"
 version = "0.28.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "certifi" },
@@ -1226,7 +1228,7 @@ wheels = [
 [[package]]
 name = "httpx-sse"
 version = "0.4.3"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/0f/4c/751061ffa58615a32c31b2d82e8482be8dd4a89154f003147acee90f2be9/httpx_sse-0.4.3.tar.gz", hash = "sha256:9b1ed0127459a66014aec3c56bebd93da3c1bc8bb6618c8082039a44889a755d" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/d2/fd/6668e5aec43ab844de6fc74927e155a3b37bf40d7c3790e49fc0406b6578/httpx_sse-0.4.3-py3-none-any.whl", hash = "sha256:0ac1c9fe3c0afad2e0ebb25a934a59f4c7823b60792691f779fad2c5568830fc" },
@@ -1235,7 +1237,7 @@ wheels = [
 [[package]]
 name = "idna"
 version = "3.16"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/1a/88/bcf9709822fe69d02c2a6a77956c98ce6ea8ca8767a9aadcedc7eb6a2390/idna-3.16.tar.gz", hash = "sha256:d7a6da03db833450fca25d2358ac9ff06cd624577a4aea3a596d5c0f77b8e03d" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/94/16/70255075a9859a0e3adb789b68ceb0e210dec03934245fd98d248226572f/idna-3.16-py3-none-any.whl", hash = "sha256:cc246e3a3f89580c3a951b5ad298ca4638078b2cdd4f115654332b5c26daded5" },
@@ -1244,7 +1246,7 @@ wheels = [
 [[package]]
 name = "iniconfig"
 version = "2.3.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/72/34/14ca021ce8e5dfedc35312d08ba8bf51fdd999c576889fc2c24cb97f4f10/iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12" },
@@ -1253,7 +1255,7 @@ wheels = [
 [[package]]
 name = "inquirerpy"
 version = "0.3.4"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pfzy" },
     { name = "prompt-toolkit" },
@@ -1266,7 +1268,7 @@ wheels = [
 [[package]]
 name = "jiter"
 version = "0.15.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/66/b5/55f06bb281d92fb3cc86d14e1def2bd908bb77693183e7cb1f5a3c388b0c/jiter-0.15.0.tar.gz", hash = "sha256:4251acc80e2b7c9b7b8823456ea0fceeb0734dac2df7636d3c711b38476b5a76" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/44/53/4f6bddbcde3c71e56d0aa1337ec95950f3d27dd4153e25aadf0feac71751/jiter-0.15.0-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:0e90a1c315a0226ec822d973817967f9223b7701546c8c2a7913e7ab0926294d" },
@@ -1338,7 +1340,7 @@ wheels = [
 [[package]]
 name = "jsonpatch"
 version = "1.33"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "jsonpointer" },
 ]
@@ -1350,7 +1352,7 @@ wheels = [
 [[package]]
 name = "jsonpointer"
 version = "3.1.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/18/c7/af399a2e7a67fd18d63c40c5e62d3af4e67b836a2107468b6a5ea24c4304/jsonpointer-3.1.1.tar.gz", hash = "sha256:0b801c7db33a904024f6004d526dcc53bbb8a4a0f4e32bfd10beadf60adf1900" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl", hash = "sha256:8ff8b95779d071ba472cf5bc913028df06031797532f08a7d5b602d8b2a488ca" },
@@ -1359,7 +1361,7 @@ wheels = [
 [[package]]
 name = "jsonschema"
 version = "4.26.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "jsonschema-specifications" },
@@ -1374,7 +1376,7 @@ wheels = [
 [[package]]
 name = "jsonschema-specifications"
 version = "2025.9.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "referencing" },
 ]
@@ -1386,7 +1388,7 @@ wheels = [
 [[package]]
 name = "langchain"
 version = "1.3.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langgraph" },
@@ -1400,7 +1402,7 @@ wheels = [
 [[package]]
 name = "langchain-anthropic"
 version = "1.3.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anthropic" },
     { name = "langchain-core" },
@@ -1414,7 +1416,7 @@ wheels = [
 [[package]]
 name = "langchain-classic"
 version = "1.0.7"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langchain-text-splitters" },
@@ -1432,7 +1434,7 @@ wheels = [
 [[package]]
 name = "langchain-community"
 version = "0.4.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "httpx-sse" },
@@ -1454,7 +1456,7 @@ wheels = [
 [[package]]
 name = "langchain-core"
 version = "1.4.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "jsonpatch" },
     { name = "langchain-protocol" },
@@ -1474,7 +1476,7 @@ wheels = [
 [[package]]
 name = "langchain-deepseek"
 version = "1.0.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langchain-openai" },
@@ -1487,7 +1489,7 @@ wheels = [
 [[package]]
 name = "langchain-ollama"
 version = "1.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "ollama" },
@@ -1500,7 +1502,7 @@ wheels = [
 [[package]]
 name = "langchain-openai"
 version = "1.1.9"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "openai" },
@@ -1514,7 +1516,7 @@ wheels = [
 [[package]]
 name = "langchain-protocol"
 version = "0.0.15"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
@@ -1526,7 +1528,7 @@ wheels = [
 [[package]]
 name = "langchain-text-splitters"
 version = "1.1.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
 ]
@@ -1538,7 +1540,7 @@ wheels = [
 [[package]]
 name = "langgraph"
 version = "1.2.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langgraph-checkpoint" },
@@ -1555,7 +1557,7 @@ wheels = [
 [[package]]
 name = "langgraph-checkpoint"
 version = "4.1.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "ormsgpack" },
@@ -1568,7 +1570,7 @@ wheels = [
 [[package]]
 name = "langgraph-prebuilt"
 version = "1.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langgraph-checkpoint" },
@@ -1581,7 +1583,7 @@ wheels = [
 [[package]]
 name = "langgraph-sdk"
 version = "0.3.15"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "orjson" },
@@ -1594,7 +1596,7 @@ wheels = [
 [[package]]
 name = "langsmith"
 version = "0.8.5"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "orjson", marker = "platform_python_implementation != 'PyPy'" },
@@ -1614,7 +1616,7 @@ wheels = [
 [[package]]
 name = "lazy-model"
 version = "0.4.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pydantic" },
 ]
@@ -1626,7 +1628,7 @@ wheels = [
 [[package]]
 name = "lxml"
 version = "6.1.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/05/3b/aab6728cae887456f409b4d75e8a01856e4f04bd510de38052a47768b680/lxml-6.1.1.tar.gz", hash = "sha256:ba96ae44888e0185281e937633a743ea90d5a196c6000f82565ebb0580012d40" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/6a/6e/c4add832b6fc1e887125b96f880d7b9b70aae5248718e046b1704bcac4b9/lxml-6.1.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:104c09bda8d2a562824c0e319d0768ce26a779b7601e0931d33b09b53c392ef7" },
@@ -1706,7 +1708,7 @@ wheels = [
 [[package]]
 name = "markdown-it-py"
 version = "4.2.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "mdurl" },
 ]
@@ -1718,7 +1720,7 @@ wheels = [
 [[package]]
 name = "markdownify"
 version = "1.2.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "six" },
@@ -1731,7 +1733,7 @@ wheels = [
 [[package]]
 name = "mcp"
 version = "1.26.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "httpx" },
@@ -1756,7 +1758,7 @@ wheels = [
 [[package]]
 name = "mdurl"
 version = "0.1.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8" },
@@ -1765,7 +1767,7 @@ wheels = [
 [[package]]
 name = "minio"
 version = "7.2.20"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "argon2-cffi" },
     { name = "certifi" },
@@ -1781,7 +1783,7 @@ wheels = [
 [[package]]
 name = "multidict"
 version = "6.7.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/1a/c2/c2d94cbe6ac1753f3fc980da97b3d930efe1da3af3c9f5125354436c073d/multidict-6.7.1.tar.gz", hash = "sha256:ec6652a1bee61c53a3e5776b6049172c53b6aaba34f18c9ad04f82712bac623d" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/8d/9c/f20e0e2cf80e4b2e4b1c365bf5fe104ee633c751a724246262db8f1a0b13/multidict-6.7.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:a90f75c956e32891a4eda3639ce6dd86e87105271f43d43442a3aedf3cddf172" },
@@ -1880,7 +1882,7 @@ wheels = [
 [[package]]
 name = "numpy"
 version = "2.4.6"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/d0/ad/fed0499ce6a338d2a03ebae59cd15093910c8875328855781952abf6c2fe/numpy-2.4.6.tar.gz", hash = "sha256:f3a3570c4a2a16746ac2c31a7c7c7b0c186b95ce902e33db6f28094ed7387dda" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/95/2a/3d7b5ac8aac24feaf9ad7ed58f45b0bbc06d37e4338ae84c9f2298b570f9/numpy-2.4.6-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:001fbb8e08d942dd57599e781f2472269ee7f2755fae407b4f67b2f0b17da3f1" },
@@ -1941,7 +1943,7 @@ wheels = [
 [[package]]
 name = "oauthlib"
 version = "3.3.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/0b/5f/19930f824ffeb0ad4372da4812c50edbd1434f678c90c2733e1188edfc63/oauthlib-3.3.1.tar.gz", hash = "sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/be/9c/92789c596b8df838baa98fa71844d84283302f7604ed565dafe5a6b5041a/oauthlib-3.3.1-py3-none-any.whl", hash = "sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1" },
@@ -1950,7 +1952,7 @@ wheels = [
 [[package]]
 name = "ollama"
 version = "0.6.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
@@ -1963,7 +1965,7 @@ wheels = [
 [[package]]
 name = "openai"
 version = "2.16.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "distro" },
@@ -1982,7 +1984,7 @@ wheels = [
 [[package]]
 name = "orjson"
 version = "3.11.9"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/7e/0c/964746fcafbd16f8ff53219ad9f6b412b34f345c75f384ad434ceaadb538/orjson-3.11.9.tar.gz", hash = "sha256:4fef17e1f8722c11587a6ef18e35902450221da0028e65dbaaa543619e68e48f" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/16/6d/11867a3ffa3a3608d84a4de51ef4dd0896d6b5cc9132fbe1daf593e677bc/orjson-3.11.9-cp312-cp312-macosx_10_15_x86_64.macosx_11_0_arm64.macosx_10_15_universal2.whl", hash = "sha256:9ef6fe90aadef185c7b128859f40beb24720b4ecea95379fc9000931179c3a49" },
@@ -2035,7 +2037,7 @@ wheels = [
 [[package]]
 name = "ormsgpack"
 version = "1.12.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/12/0c/f1761e21486942ab9bb6feaebc610fa074f7c5e496e6962dea5873348077/ormsgpack-1.12.2.tar.gz", hash = "sha256:944a2233640273bee67521795a73cf1e959538e0dfb7ac635505010455e53b33" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/4c/36/16c4b1921c308a92cef3bf6663226ae283395aa0ff6e154f925c32e91ff5/ormsgpack-1.12.2-cp312-cp312-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:7a29d09b64b9694b588ff2f80e9826bdceb3a2b91523c5beae1fab27d5c940e7" },
@@ -2074,7 +2076,7 @@ wheels = [
 [[package]]
 name = "packaging"
 version = "26.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/d7/f1/e7a6dd94a8d4a5626c03e4e99c87f241ba9e350cd9e6d75123f992427270/packaging-26.2.tar.gz", hash = "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/df/b2/87e62e8c3e2f4b32e5fe99e0b86d576da1312593b39f47d8ceef365e95ed/packaging-26.2-py3-none-any.whl", hash = "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e" },
@@ -2083,7 +2085,7 @@ wheels = [
 [[package]]
 name = "pfzy"
 version = "0.3.4"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/d9/5a/32b50c077c86bfccc7bed4881c5a2b823518f5450a30e639db5d3711952e/pfzy-0.3.4.tar.gz", hash = "sha256:717ea765dd10b63618e7298b2d98efd819e0b30cd5905c9707223dceeb94b3f1" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/8c/d7/8ff98376b1acc4503253b685ea09981697385ce344d4e3935c2af49e044d/pfzy-0.3.4-py3-none-any.whl", hash = "sha256:5f50d5b2b3207fa72e7ec0ef08372ef652685470974a107d0d4999fc5a903a96" },
@@ -2092,7 +2094,7 @@ wheels = [
 [[package]]
 name = "pillow"
 version = "12.2.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/8c/21/c2bcdd5906101a30244eaffc1b6e6ce71a31bd0742a01eb89e660ebfac2d/pillow-12.2.0.tar.gz", hash = "sha256:a830b1a40919539d07806aa58e1b114df53ddd43213d9c8b75847eee6c0182b5" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/58/be/7482c8a5ebebbc6470b3eb791812fff7d5e0216c2be3827b30b8bb6603ed/pillow-12.2.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:2d192a155bbcec180f8564f693e6fd9bccff5a7af9b32e2e4bf8c9c69dbad6b5" },
@@ -2161,7 +2163,7 @@ wheels = [
 [[package]]
 name = "playwright"
 version = "1.60.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "greenlet" },
     { name = "pyee" },
@@ -2180,7 +2182,7 @@ wheels = [
 [[package]]
 name = "pluggy"
 version = "1.6.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746" },
@@ -2189,7 +2191,7 @@ wheels = [
 [[package]]
 name = "portalocker"
 version = "3.2.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pywin32", marker = "sys_platform == 'win32'" },
 ]
@@ -2201,7 +2203,7 @@ wheels = [
 [[package]]
 name = "posthog"
 version = "7.7.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "backoff" },
     { name = "distro" },
@@ -2218,7 +2220,7 @@ wheels = [
 [[package]]
 name = "prompt-toolkit"
 version = "3.0.52"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "wcwidth" },
 ]
@@ -2230,7 +2232,7 @@ wheels = [
 [[package]]
 name = "propcache"
 version = "0.5.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/ec/44/c87281c333769159c50594f22610f77398a47ccbfbbf23074e744e86f87c/propcache-0.5.2.tar.gz", hash = "sha256:01c4fc7480cd0598bb4b57022df55b9ca296da7fc5a8760bd8451a7e63a7d427" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/4a/cb/e27bc2b2737a0bb49962b275efa051e8f1c35a936df7d5139b6b658b7dc9/propcache-0.5.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:806719138ecd720339a12410fb9614ac9b2b2d3a5fdf8235d56981c36f4039ba" },
@@ -2324,7 +2326,7 @@ wheels = [
 [[package]]
 name = "proto-plus"
 version = "1.28.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "protobuf" },
 ]
@@ -2336,7 +2338,7 @@ wheels = [
 [[package]]
 name = "protobuf"
 version = "6.33.6"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/66/70/e908e9c5e52ef7c3a6c7902c9dfbb34c7e29c25d2f81ade3856445fd5c94/protobuf-6.33.6.tar.gz", hash = "sha256:a6768d25248312c297558af96a9f9c929e8c4cee0659cb07e780731095f38135" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/fc/9f/2f509339e89cfa6f6a4c4ff50438db9ca488dec341f7e454adad60150b00/protobuf-6.33.6-cp310-abi3-win32.whl", hash = "sha256:7d29d9b65f8afef196f8334e80d6bc1d5d4adedb449971fefd3723824e6e77d3" },
@@ -2351,7 +2353,7 @@ wheels = [
 [[package]]
 name = "psutil"
 version = "7.2.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/aa/c6/d1ddf4abb55e93cebc4f2ed8b5d6dbad109ecb8d63748dd2b20ab5e57ebe/psutil-7.2.2.tar.gz", hash = "sha256:0746f5f8d406af344fd547f1c8daa5f5c33dbc293bb8d6a16d80b4bb88f59372" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/51/08/510cbdb69c25a96f4ae523f733cdc963ae654904e8db864c07585ef99875/psutil-7.2.2-cp313-cp313t-macosx_10_13_x86_64.whl", hash = "sha256:2edccc433cbfa046b980b0df0171cd25bcaeb3a68fe9022db0979e7aa74a826b" },
@@ -2379,7 +2381,7 @@ wheels = [
 [[package]]
 name = "pyasn1"
 version = "0.6.3"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/5c/5f/6583902b6f79b399c9c40674ac384fd9cd77805f9e6205075f828ef11fb2/pyasn1-0.6.3.tar.gz", hash = "sha256:697a8ecd6d98891189184ca1fa05d1bb00e2f84b5977c481452050549c8a72cf" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/5d/a0/7d793dce3fa811fe047d6ae2431c672364b462850c6235ae306c0efd025f/pyasn1-0.6.3-py3-none-any.whl", hash = "sha256:a80184d120f0864a52a073acc6fc642847d0be408e7c7252f31390c0f4eadcde" },
@@ -2388,7 +2390,7 @@ wheels = [
 [[package]]
 name = "pyasn1-modules"
 version = "0.4.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyasn1" },
 ]
@@ -2400,7 +2402,7 @@ wheels = [
 [[package]]
 name = "pycparser"
 version = "3.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/1b/7d/92392ff7815c21062bea51aa7b87d45576f649f16458d78b7cf94b9ab2e6/pycparser-3.0.tar.gz", hash = "sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl", hash = "sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992" },
@@ -2409,7 +2411,7 @@ wheels = [
 [[package]]
 name = "pycryptodome"
 version = "3.23.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/8e/a6/8452177684d5e906854776276ddd34eca30d1b1e15aa1ee9cefc289a33f5/pycryptodome-3.23.0.tar.gz", hash = "sha256:447700a657182d60338bab09fdb27518f8856aecd80ae4c6bdddb67ff5da44ef" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/04/5d/bdb09489b63cd34a976cc9e2a8d938114f7a53a74d3dd4f125ffa49dce82/pycryptodome-3.23.0-cp313-cp313t-macosx_10_13_universal2.whl", hash = "sha256:0011f7f00cdb74879142011f95133274741778abba114ceca229adbf8e62c3e4" },
@@ -2439,7 +2441,7 @@ wheels = [
 [[package]]
 name = "pydantic"
 version = "2.12.5"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "annotated-types" },
     { name = "pydantic-core" },
@@ -2454,7 +2456,7 @@ wheels = [
 [[package]]
 name = "pydantic-core"
 version = "2.41.5"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
@@ -2525,7 +2527,7 @@ wheels = [
 [[package]]
 name = "pydantic-settings"
 version = "2.14.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "python-dotenv" },
@@ -2539,7 +2541,7 @@ wheels = [
 [[package]]
 name = "pyee"
 version = "13.0.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
@@ -2551,7 +2553,7 @@ wheels = [
 [[package]]
 name = "pygments"
 version = "2.20.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz", hash = "sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176" },
@@ -2560,7 +2562,7 @@ wheels = [
 [[package]]
 name = "pyjwt"
 version = "2.13.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/3b/81/58d0ac84e1ef3a3843791d6954d94c0b33d526c75eeb1efbce9d0a4c4077/pyjwt-2.13.0.tar.gz", hash = "sha256:41571c89ca91598c79e8ef18a2d07367d4810fbbd6f637794879baf1b7703423" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/a3/5e/ecf12fdb62546d64385c158514e9b2b671f7832108ef2ecd2020ce0af2d1/pyjwt-2.13.0-py3-none-any.whl", hash = "sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728" },
@@ -2574,7 +2576,7 @@ crypto = [
 [[package]]
 name = "pymongo"
 version = "4.17.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "dnspython" },
 ]
@@ -2625,7 +2627,7 @@ wheels = [
 [[package]]
 name = "pyobjc"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-accessibility", marker = "platform_release >= '20.0'" },
@@ -2797,7 +2799,7 @@ wheels = [
 [[package]]
 name = "pyobjc-core"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/b8/b6/d5612eb40be4fd5ef88c259339e6313f46ba67577a95d86c3470b951fce0/pyobjc_core-12.1.tar.gz", hash = "sha256:2bb3903f5387f72422145e1466b3ac3f7f0ef2e9960afa9bcd8961c5cbf8bd21" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/64/5a/6b15e499de73050f4a2c88fff664ae154307d25dc04da8fb38998a428358/pyobjc_core-12.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:818bcc6723561f207e5b5453efe9703f34bc8781d11ce9b8be286bb415eb4962" },
@@ -2810,7 +2812,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-accessibility"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2828,7 +2830,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-accounts"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2841,7 +2843,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-addressbook"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2858,7 +2860,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-adservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2871,7 +2873,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-adsupport"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2884,7 +2886,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-applescriptkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2897,7 +2899,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-applescriptobjc"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2910,7 +2912,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-applicationservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2929,7 +2931,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-apptrackingtransparency"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2942,7 +2944,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-arkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2955,7 +2957,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-audiovideobridging"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2972,7 +2974,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-authenticationservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -2989,7 +2991,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-automaticassessmentconfiguration"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3006,7 +3008,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-automator"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3023,7 +3025,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-avfoundation"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3043,7 +3045,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-avkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3061,7 +3063,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-avrouting"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3078,7 +3080,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-backgroundassets"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3095,7 +3097,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-browserenginekit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3115,7 +3117,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-businesschat"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3128,7 +3130,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-calendarstore"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3141,7 +3143,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-callkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3158,7 +3160,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-carbon"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3171,7 +3173,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-cfnetwork"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3188,7 +3190,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-cinematic"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-avfoundation" },
@@ -3204,7 +3206,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-classkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3221,7 +3223,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-cloudkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-accounts" },
@@ -3237,7 +3239,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-cocoa"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
 ]
@@ -3253,7 +3255,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-collaboration"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3266,7 +3268,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-colorsync"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3279,7 +3281,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-compositorservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3293,7 +3295,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-contacts"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3310,7 +3312,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-contactsui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3328,7 +3330,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coreaudio"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3345,7 +3347,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coreaudiokit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3363,7 +3365,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-corebluetooth"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3380,7 +3382,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coredata"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3397,7 +3399,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-corehaptics"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3410,7 +3412,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-corelocation"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3427,7 +3429,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coremedia"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3444,7 +3446,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coremediaio"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3461,7 +3463,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coremidi"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3478,7 +3480,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coreml"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3495,7 +3497,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coremotion"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3512,7 +3514,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coreservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3530,7 +3532,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-corespotlight"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3547,7 +3549,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-coretext"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3565,7 +3567,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-corewlan"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3582,7 +3584,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-cryptotokenkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3599,7 +3601,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-datadetection"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3612,7 +3614,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-devicecheck"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3625,7 +3627,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-devicediscoveryextension"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3638,7 +3640,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-dictionaryservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-coreservices" },
@@ -3651,7 +3653,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-discrecording"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3668,7 +3670,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-discrecordingui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3682,7 +3684,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-diskarbitration"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3695,7 +3697,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-dvdplayback"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3708,7 +3710,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-eventkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3721,7 +3723,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-exceptionhandling"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3734,7 +3736,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-executionpolicy"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3747,7 +3749,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-extensionkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3764,7 +3766,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-externalaccessory"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3781,7 +3783,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-fileprovider"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3798,7 +3800,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-fileproviderui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-fileprovider" },
@@ -3811,7 +3813,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-findersync"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3824,7 +3826,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-fsevents"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3841,7 +3843,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-fskit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3858,7 +3860,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-gamecenter"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3875,7 +3877,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-gamecontroller"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3892,7 +3894,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-gamekit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3910,7 +3912,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-gameplaykit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3928,7 +3930,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-gamesave"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3941,7 +3943,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-healthkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3958,7 +3960,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-imagecapturecore"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3975,7 +3977,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-inputmethodkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -3992,7 +3994,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-installerplugins"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4005,7 +4007,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-instantmessage"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4019,7 +4021,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-intents"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4036,7 +4038,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-intentsui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-intents" },
@@ -4053,7 +4055,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-iobluetooth"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4070,7 +4072,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-iobluetoothui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-iobluetooth" },
@@ -4083,7 +4085,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-iosurface"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4096,7 +4098,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-ituneslibrary"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4109,7 +4111,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-kernelmanagement"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4122,7 +4124,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-latentsemanticmapping"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4135,7 +4137,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-launchservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-coreservices" },
@@ -4148,7 +4150,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-libdispatch"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4165,7 +4167,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-libxpc"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4182,7 +4184,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-linkpresentation"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4196,7 +4198,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-localauthentication"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4214,7 +4216,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-localauthenticationembeddedui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4228,7 +4230,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-mailkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4241,7 +4243,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-mapkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4260,7 +4262,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-mediaaccessibility"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4273,7 +4275,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-mediaextension"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-avfoundation" },
@@ -4292,7 +4294,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-medialibrary"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4306,7 +4308,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-mediaplayer"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-avfoundation" },
@@ -4319,7 +4321,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-mediatoolbox"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4336,7 +4338,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-metal"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4353,7 +4355,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-metalfx"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-metal" },
@@ -4370,7 +4372,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-metalkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4388,7 +4390,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-metalperformanceshaders"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-metal" },
@@ -4405,7 +4407,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-metalperformanceshadersgraph"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-metalperformanceshaders" },
@@ -4418,7 +4420,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-metrickit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4435,7 +4437,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-mlcompute"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4448,7 +4450,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-modelio"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4466,7 +4468,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-multipeerconnectivity"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4483,7 +4485,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-naturallanguage"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4496,7 +4498,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-netfs"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4509,7 +4511,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-network"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4526,7 +4528,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-networkextension"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4543,7 +4545,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-notificationcenter"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4560,7 +4562,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-opendirectory"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4573,7 +4575,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-osakit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4586,7 +4588,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-oslog"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4605,7 +4607,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-passkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4622,7 +4624,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-pencilkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4635,7 +4637,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-phase"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-avfoundation" },
@@ -4648,7 +4650,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-photos"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4665,7 +4667,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-photosui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4682,7 +4684,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-preferencepanes"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4695,7 +4697,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-pushkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4712,7 +4714,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-quartz"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4729,7 +4731,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-quicklookthumbnailing"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4743,7 +4745,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-replaykit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4760,7 +4762,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-safariservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4777,7 +4779,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-safetykit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4795,7 +4797,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-scenekit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4813,7 +4815,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-screencapturekit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4831,7 +4833,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-screensaver"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4848,7 +4850,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-screentime"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4861,7 +4863,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-scriptingbridge"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4878,7 +4880,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-searchkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-coreservices" },
@@ -4891,7 +4893,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-security"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4908,7 +4910,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-securityfoundation"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4922,7 +4924,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-securityinterface"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4940,7 +4942,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-securityui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4954,7 +4956,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-sensitivecontentanalysis"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4968,7 +4970,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-servicemanagement"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -4981,7 +4983,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-sharedwithyou"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-sharedwithyoucore" },
@@ -4998,7 +5000,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-sharedwithyoucore"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5015,7 +5017,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-shazamkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5032,7 +5034,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-social"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5045,7 +5047,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-soundanalysis"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5058,7 +5060,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-speech"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5075,7 +5077,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-spritekit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5093,7 +5095,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-storekit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5110,7 +5112,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-symbols"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5123,7 +5125,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-syncservices"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5141,7 +5143,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-systemconfiguration"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5158,7 +5160,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-systemextensions"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5175,7 +5177,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-threadnetwork"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5188,7 +5190,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-uniformtypeidentifiers"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5201,7 +5203,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-usernotifications"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5218,7 +5220,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-usernotificationsui"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5232,7 +5234,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-videosubscriberaccount"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5245,7 +5247,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-videotoolbox"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5264,7 +5266,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-virtualization"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5281,7 +5283,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-vision"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5300,7 +5302,7 @@ wheels = [
 [[package]]
 name = "pyobjc-framework-webkit"
 version = "12.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyobjc-core" },
     { name = "pyobjc-framework-cocoa" },
@@ -5317,7 +5319,7 @@ wheels = [
 [[package]]
 name = "pyotp"
 version = "2.9.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/f3/b2/1d5994ba2acde054a443bd5e2d384175449c7d2b6d1a0614dbca3a63abfc/pyotp-2.9.0.tar.gz", hash = "sha256:346b6642e0dbdde3b4ff5a930b664ca82abfa116356ed48cc42c7d6590d36f63" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/c3/c0/c33c8792c3e50193ef55adb95c1c3c2786fe281123291c2dbf0eaab95a6f/pyotp-2.9.0-py3-none-any.whl", hash = "sha256:81c2e5865b8ac55e825b0358e496e1d9387c811e85bb40e71a3b29b288963612" },
@@ -5326,7 +5328,7 @@ wheels = [
 [[package]]
 name = "pyparsing"
 version = "3.3.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/f3/91/9c6ee907786a473bf81c5f53cf703ba0957b23ab84c264080fb5a450416f/pyparsing-3.3.2.tar.gz", hash = "sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl", hash = "sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d" },
@@ -5335,16 +5337,28 @@ wheels = [
 [[package]]
 name = "pypdf"
 version = "6.10.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/7b/3f/9f2167401c2e94833ca3b69535bad89e533b5de75fefe4197a2c224baec2/pypdf-6.10.2.tar.gz", hash = "sha256:7d09ce108eff6bf67465d461b6ef352dcb8d84f7a91befc02f904455c6eea11d" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/0c/d6/1d5c60cc17bbdf37c1552d9c03862fc6d32c5836732a0415b2d637edc2d0/pypdf-6.10.2-py3-none-any.whl", hash = "sha256:aa53be9826655b51c96741e5d7983ca224d898ac0a77896e64636810517624aa" },
 ]
 
 [[package]]
+name = "pysam"
+version = "0.22.1"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/a6/bc/e0a79d74137643940f5406121039d1272f29f55c5330e7b43484b2259da5/pysam-0.22.1.tar.gz", hash = "sha256:18a0b97be95bd71e584de698441c46651cdff378db1c9a4fb3f541e560253b22" }
+wheels = [
+    { url = "https://mirrors.aliyun.com/pypi/packages/43/2a/de24972a7fde545aec7d3e59230f51b004e407d327087f4a90b7912cb679/pysam-0.22.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:e72e129d245574801125029a5892c9e18d2956b13c4203ea585cbd64ccde9351" },
+    { url = "https://mirrors.aliyun.com/pypi/packages/f6/2c/d226f2db96fda51f7ab70c5256691def40af4879b6b5ffadda2c676ac5e5/pysam-0.22.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:f8f00bb1fb977fc33c87cf5fe9023eefc2ba3d43d30ab4875a1765827018c949" },
+    { url = "https://mirrors.aliyun.com/pypi/packages/f5/6b/27106562f2477d38c0d8efa452839505877e335da12ace6bf993b7bee4dd/pysam-0.22.1-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:c0e051fda433c1c7ff94532f60477bb83b97f4bb183567a0ae23f340e1c200b4" },
+    { url = "https://mirrors.aliyun.com/pypi/packages/0c/fe/ce252dce8e5dd7ae06fd2036b5a146c1200598346ee70cbeb0a44740aa6b/pysam-0.22.1-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:860c7c78ddb1539b83d5476502ba14c8b4e8435810dc7a5b715196da3dfb86b6" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.0.3"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "iniconfig" },
@@ -5360,7 +5374,7 @@ wheels = [
 [[package]]
 name = "pytest-asyncio"
 version = "1.3.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pytest" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
@@ -5373,7 +5387,7 @@ wheels = [
 [[package]]
 name = "pytest-cov"
 version = "7.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "coverage" },
     { name = "pluggy" },
@@ -5387,7 +5401,7 @@ wheels = [
 [[package]]
 name = "pytest-mock"
 version = "3.15.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pytest" },
 ]
@@ -5399,7 +5413,7 @@ wheels = [
 [[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "six" },
 ]
@@ -5411,7 +5425,7 @@ wheels = [
 [[package]]
 name = "python-docx"
 version = "1.2.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "lxml" },
     { name = "typing-extensions" },
@@ -5424,7 +5438,7 @@ wheels = [
 [[package]]
 name = "python-dotenv"
 version = "1.2.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a" },
@@ -5433,7 +5447,7 @@ wheels = [
 [[package]]
 name = "python-multipart"
 version = "0.0.29"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/4e/fe/70bd71a6738b09a0bdf6480ca6436b167469ca4578b2a0efbe390b4b0e70/python_multipart-0.0.29.tar.gz", hash = "sha256:643e93849196645e2dbdd81a0f8829a23123ad7f797a84a364c6fb3563f18904" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/8f/cb/769cfc37177252872a45a71f3fbdde9d51b471a3f3c14bfe95dde3407386/python_multipart-0.0.29-py3-none-any.whl", hash = "sha256:2ddcc971cef266225f54f552d8fa10bcfbb1f14446caec199060daac59ff2d69" },
@@ -5442,7 +5456,7 @@ wheels = [
 [[package]]
 name = "pywin32"
 version = "311"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/e7/ab/01ea1943d4eba0f850c3c61e78e8dd59757ff815ff3ccd0a84de5f541f42/pywin32-311-cp312-cp312-win32.whl", hash = "sha256:750ec6e621af2b948540032557b10a2d43b0cee2ae9758c54154d711cc852d31" },
     { url = "https://mirrors.aliyun.com/pypi/packages/d1/a8/a0e8d07d4d051ec7502cd58b291ec98dcc0c3fff027caad0470b72cfcc2f/pywin32-311-cp312-cp312-win_amd64.whl", hash = "sha256:b8c095edad5c211ff31c05223658e71bf7116daa0ecf3ad85f3201ea3190d067" },
@@ -5458,7 +5472,7 @@ wheels = [
 [[package]]
 name = "pyyaml"
 version = "6.0.3"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/05/8e/961c0007c59b8dd7729d542c61a4d537767a59645b82a0b521206e1e25c2/pyyaml-6.0.3.tar.gz", hash = "sha256:d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/d1/33/422b98d2195232ca1826284a76852ad5a86fe23e31b009c9886b2d0fb8b2/pyyaml-6.0.3-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:7f047e29dcae44602496db43be01ad42fc6f1cc0d8cd6c83d342306c32270196" },
@@ -5504,7 +5518,7 @@ wheels = [
 [[package]]
 name = "redis"
 version = "7.4.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/7b/7f/3759b1d0d72b7c92f0d70ffd9dc962b7b7b5ee74e135f9d7d8ab06b8a318/redis-7.4.0.tar.gz", hash = "sha256:64a6ea7bf567ad43c964d2c30d82853f8df927c5c9017766c55a1d1ed95d18ad" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/74/3a/95deec7db1eb53979973ebd156f3369a72732208d1391cd2e5d127062a32/redis-7.4.0-py3-none-any.whl", hash = "sha256:a9c74a5c893a5ef8455a5adb793a31bb70feb821c86eccb62eebef5a19c429ec" },
@@ -5513,7 +5527,7 @@ wheels = [
 [[package]]
 name = "referencing"
 version = "0.37.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "rpds-py" },
@@ -5527,7 +5541,7 @@ wheels = [
 [[package]]
 name = "regex"
 version = "2026.5.9"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/dc/0e/49aee608ad09480e7fd276898c99ec6192985fa331abe4eb3a986094490b/regex-2026.5.9.tar.gz", hash = "sha256:a8234aa23ec39894bfe4a3f1b85616a7032481964a13ac6fc9f10de4f6fca270" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/50/9b/6550044bc44e17c84d312c031c2ec42fbdb6a4ec4e29093be3a172d08772/regex-2026.5.9-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:57eeeb05db7979413dec5438f2db21d7ecbba787cde7a711df1a6f6df672aa06" },
@@ -5615,7 +5629,7 @@ wheels = [
 [[package]]
 name = "reportlab"
 version = "4.4.9"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "pillow" },
@@ -5628,7 +5642,7 @@ wheels = [
 [[package]]
 name = "requests"
 version = "2.33.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "charset-normalizer" },
@@ -5643,7 +5657,7 @@ wheels = [
 [[package]]
 name = "requests-oauthlib"
 version = "2.0.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "oauthlib" },
     { name = "requests" },
@@ -5656,7 +5670,7 @@ wheels = [
 [[package]]
 name = "requests-toolbelt"
 version = "1.0.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "requests" },
 ]
@@ -5668,7 +5682,7 @@ wheels = [
 [[package]]
 name = "rich"
 version = "14.3.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "pygments" },
@@ -5681,7 +5695,7 @@ wheels = [
 [[package]]
 name = "rpds-py"
 version = "0.30.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/20/af/3f2f423103f1113b36230496629986e0ef7e199d2aa8392452b484b38ced/rpds_py-0.30.0.tar.gz", hash = "sha256:dd8ff7cf90014af0c0f787eea34794ebf6415242ee1d6fa91eaba725cc441e84" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/03/e7/98a2f4ac921d82f33e03f3835f5bf3a4a40aa1bfdc57975e74a97b2b4bdd/rpds_py-0.30.0-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:a161f20d9a43006833cd7068375a94d035714d73a172b681d8881820600abfad" },
@@ -5762,7 +5776,7 @@ wheels = [
 [[package]]
 name = "rsa"
 version = "4.9.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "pyasn1" },
 ]
@@ -5774,7 +5788,7 @@ wheels = [
 [[package]]
 name = "screeninfo"
 version = "0.8.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "cython", marker = "sys_platform == 'darwin'" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
@@ -5787,7 +5801,7 @@ wheels = [
 [[package]]
 name = "six"
 version = "1.17.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274" },
@@ -5796,7 +5810,7 @@ wheels = [
 [[package]]
 name = "sniffio"
 version = "1.3.1"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/a2/87/a6771e1546d97e7e041b6ae58d80074f81b7d5121207425c964ddf5cfdbd/sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2" },
@@ -5805,7 +5819,7 @@ wheels = [
 [[package]]
 name = "soupsieve"
 version = "2.8.4"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/47/2c/0a5f6f8ee0d5589e48c7640213ed5175d52cf540a06725b628cc1a45d6ce/soupsieve-2.8.4.tar.gz", hash = "sha256:e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/5e/f5/0c41cb68dcae6b7de4fac4188a3a9589e21fb31df21ea3a2e888db95e6c9/soupsieve-2.8.4-py3-none-any.whl", hash = "sha256:e7e6b0769c8f51ed59acab6e994b00621096cfb1c640a7509295987388fbaf65" },
@@ -5814,7 +5828,7 @@ wheels = [
 [[package]]
 name = "sqlalchemy"
 version = "2.0.50"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "greenlet", marker = "platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'" },
     { name = "typing-extensions" },
@@ -5855,7 +5869,7 @@ wheels = [
 [[package]]
 name = "sse-starlette"
 version = "3.4.4"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "starlette" },
@@ -5868,7 +5882,7 @@ wheels = [
 [[package]]
 name = "starlette"
 version = "1.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
@@ -5881,7 +5895,7 @@ wheels = [
 [[package]]
 name = "tavily-python"
 version = "0.7.24"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "requests" },
@@ -5895,7 +5909,7 @@ wheels = [
 [[package]]
 name = "tenacity"
 version = "9.1.4"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/47/c6/ee486fd809e357697ee8a44d3d69222b344920433d3b6666ccd9b374630c/tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/d7/c1/eb8f9debc45d3b7918a32ab756658a0904732f75e555402972246b0b8e71/tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55" },
@@ -5904,7 +5918,7 @@ wheels = [
 [[package]]
 name = "tiktoken"
 version = "0.13.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "regex" },
     { name = "requests" },
@@ -5951,7 +5965,7 @@ wheels = [
 [[package]]
 name = "tqdm"
 version = "4.67.3"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
@@ -5963,7 +5977,7 @@ wheels = [
 [[package]]
 name = "typing-extensions"
 version = "4.15.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/72/94/1a15dd82efb362ac84269196e94cf00f187f7ed21c242792a923cdb1c61f/typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548" },
@@ -5972,7 +5986,7 @@ wheels = [
 [[package]]
 name = "typing-inspection"
 version = "0.4.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
@@ -5984,7 +5998,7 @@ wheels = [
 [[package]]
 name = "uritemplate"
 version = "4.2.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/98/60/f174043244c5306c9988380d2cb10009f91563fc4b31293d27e17201af56/uritemplate-4.2.0.tar.gz", hash = "sha256:480c2ed180878955863323eea31b0ede668795de182617fef9c6ca09e6ec9d0e" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/a9/99/3ae339466c9183ea5b8ae87b34c0b897eda475d2aec2307cae60e5cd4f29/uritemplate-4.2.0-py3-none-any.whl", hash = "sha256:962201ba1c4edcab02e60f9a0d3821e82dfc5d2d6662a21abd533879bdb8a686" },
@@ -5993,7 +6007,7 @@ wheels = [
 [[package]]
 name = "urllib3"
 version = "2.7.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897" },
@@ -6002,7 +6016,7 @@ wheels = [
 [[package]]
 name = "uuid-utils"
 version = "0.16.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/01/a1/822ceef22d1c139cffebe4b1b660cfaa10253d5c770aa2598dc8e9497593/uuid_utils-0.16.0.tar.gz", hash = "sha256:d6902d4375dfba4c9902c736bb82d3c040417b67f7d0fa48910ddfdb1ac95de7" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/ff/4c/b4cf43a5d22bcdb91727acdf54be0d78e83e595b73c5a9a8a4291875f059/uuid_utils-0.16.0-cp312-cp312-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:727fae3f0682191ec9c8ce1cd0f71e81b471a2e26b7c5fd66712fc0f11640aa0" },
@@ -6080,7 +6094,7 @@ wheels = [
 [[package]]
 name = "uuid7"
 version = "0.1.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/5c/19/7472bd526591e2192926247109dbf78692e709d3e56775792fec877a7720/uuid7-0.1.0.tar.gz", hash = "sha256:8c57aa32ee7456d3cc68c95c4530bc571646defac01895cfc73545449894a63c" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/b5/77/8852f89a91453956582a85024d80ad96f30a41fed4c2b3dce0c9f12ecc7e/uuid7-0.1.0-py2.py3-none-any.whl", hash = "sha256:5e259bb63c8cb4aded5927ff41b444a80d0c7124e8a0ced7cf44efa1f5cccf61" },
@@ -6089,7 +6103,7 @@ wheels = [
 [[package]]
 name = "uvicorn"
 version = "0.48.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "click" },
     { name = "h11" },
@@ -6102,7 +6116,7 @@ wheels = [
 [[package]]
 name = "wcwidth"
 version = "0.7.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/2c/ee/afaf0f85a9a18fe47a67f1e4422ed6cf1fe642f0ae0a2f81166231303c52/wcwidth-0.7.0.tar.gz", hash = "sha256:90e3a7ea092341c44b99562e75d09e4d5160fe7a3974c6fb842a101a95e7eed0" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/41/52/e465037f5375f43533d1a80b6923955201596a99142ed524d77b571a1418/wcwidth-0.7.0-py3-none-any.whl", hash = "sha256:5d69154c429a82910e241c738cd0e2976fac8a2dd47a1a805f4afed1c0f136f2" },
@@ -6111,7 +6125,7 @@ wheels = [
 [[package]]
 name = "websockets"
 version = "16.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/04/24/4b2031d72e840ce4c1ccb255f693b15c334757fc50023e4db9537080b8c4/websockets-16.0.tar.gz", hash = "sha256:5f6261a5e56e8d5c42a4497b364ea24d94d9563e8fbd44e78ac40879c60179b5" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/84/7b/bac442e6b96c9d25092695578dda82403c77936104b5682307bd4deb1ad4/websockets-16.0-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:71c989cbf3254fbd5e84d3bff31e4da39c43f884e64f2551d14bb3c186230f00" },
@@ -6156,7 +6170,7 @@ wheels = [
 [[package]]
 name = "xxhash"
 version = "3.7.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/24/2f/e183a1b407002f5af81822bee18b61cdb94b8670208ef34734d8d2b8ebe9/xxhash-3.7.0.tar.gz", hash = "sha256:6cc4eefbb542a5d6ffd6d70ea9c502957c925e800f998c5630ecc809d6702bae" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/f2/8a/51a14cdef4728c6c2337db8a7d8704422cc65676d9199d77215464c880af/xxhash-3.7.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:082c87bfdd2b9f457606c7a4a53457f4c4b48b0cdc48de0277f4349d79bb3d7a" },
@@ -6269,7 +6283,7 @@ wheels = [
 [[package]]
 name = "yarl"
 version = "1.24.2"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "idna" },
     { name = "multidict" },
@@ -6351,7 +6365,7 @@ wheels = [
 [[package]]
 name = "zstandard"
 version = "0.25.0"
-source = { registry = "https://mirrors.aliyun.com/pypi/simple/" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 sdist = { url = "https://mirrors.aliyun.com/pypi/packages/fd/aa/3e0508d5a5dd96529cdc5a97011299056e14c6505b678fd58938792794b1/zstandard-0.25.0.tar.gz", hash = "sha256:7713e1179d162cf5c7906da876ec2ccb9c3a9dcbdffef0cc7f70c3667a205f0b" }
 wheels = [
     { url = "https://mirrors.aliyun.com/pypi/packages/82/fc/f26eb6ef91ae723a03e16eddb198abcfce2bc5a42e224d44cc8b6765e57e/zstandard-0.25.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:7b3c3a3ab9daa3eed242d6ecceead93aebbb8f5f84318d82cee643e019c4b73b" },

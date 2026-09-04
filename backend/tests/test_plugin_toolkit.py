@@ -27,7 +27,7 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     )
 
     names = _tool_names(toolkit)
-    assert len(names) == 280
+    assert len(names) == 383
     assert "scientific_inspect" in names
     assert "scientific_netcdf_visualize" in names
     assert "geoscience_collection_inspect" in names
@@ -62,6 +62,10 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     assert "sequence_fastqc_report" in names
     assert "blast_hit_visualize" in names
     assert "sequence_quality_heatmap" in names
+    assert "fasta_assembly_metrics" in names
+    assert "fastq_qc_clean_workflow" in names
+    assert "alignment_coverage_accurate" in names
+    assert "alignment_region_analysis_workflow" in names
     assert names == toolkit.dataset_fast_path_tool_names
     inspect = next(
         item for item in toolkit.get_tools()
@@ -115,3 +119,42 @@ def test_duplicate_plugin_tool_names_fail_startup(tmp_path):
 
     with pytest.raises(ValueError, match="Duplicate plugin tool name"):
         PluginToolkit(AsyncMock(), session_id="session", plugins_dir=tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_workflow_declared_attachments_are_bounded_and_path_safe(tmp_path):
+    plugin = tmp_path / "workflow"
+    plugin.mkdir()
+    (plugin / "manifest.json").write_text(json.dumps({
+        "plugin": "workflow",
+        "tools": [{
+            "name": "workflow_tool",
+            "description": "workflow",
+            "timeout_seconds": 300,
+            "parameters": {"type": "object", "properties": {}},
+        }],
+    }))
+    sandbox = AsyncMock()
+    sandbox.exec_command.return_value = ToolResult(success=True, data={"status": "running"})
+    sandbox.wait_for_process.return_value = ToolResult(success=True, data={"status": "completed", "returncode": 0})
+    payload = {
+        "success": True,
+        "output_path": "/home/ubuntu/output/report.json",
+        "attachments": [
+            "/home/ubuntu/output/report.json",
+            "/home/ubuntu/output/chart.html",
+            "/home/ubuntu/datasets/private.fastq",
+            "/etc/passwd",
+            "relative.txt",
+        ],
+    }
+    sandbox.view_shell.return_value = ToolResult(success=True, data={"output": json.dumps(payload)})
+    toolkit = PluginToolkit(sandbox, session_id="session", plugins_dir=tmp_path)
+
+    result = await toolkit.call_tool("workflow_tool", {})
+
+    assert result.data["attachments"] == [
+        "/home/ubuntu/output/report.json",
+        "/home/ubuntu/output/chart.html",
+    ]
+    sandbox.wait_for_process.assert_awaited_once_with("session", 300)

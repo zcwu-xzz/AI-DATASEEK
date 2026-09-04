@@ -1,6 +1,6 @@
 #!/usr/bin/expect -f
 set timeout 120
-spawn scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no /tmp/ai-dataseek-chat-ui-fix.tgz root@39.106.98.67:/root/
+spawn scp -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no /tmp/ai-dataseek-sam-preview-20260904.tgz root@39.106.98.67:/root/
 expect {
   -re {password:} { send -- "Km159870610@\r"; exp_continue }
   timeout { exit 2 }

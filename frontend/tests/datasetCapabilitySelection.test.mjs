@@ -21,3 +21,20 @@ test('dataset chat capabilities preserve Skill and read-only dataset context', (
     },
   );
 });
+
+test('dataset chat capabilities include explicitly uploaded attachments', () => {
+  assert.deepEqual(
+    buildDatasetChatCapabilities(
+      'dataset-1',
+      [],
+      [],
+      [{ file_id: 'file-1', filename: 'sample.fasta' }],
+    ),
+    {
+      attachments: [{ file_id: 'file-1', filename: 'sample.fasta' }],
+      skills: [],
+      mcpServers: [],
+      datasetIds: ['dataset-1'],
+    },
+  );
+});

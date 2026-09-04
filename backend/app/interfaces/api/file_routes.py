@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
+from starlette.concurrency import run_in_threadpool
 import json
 import logging
 import io
@@ -9,8 +10,15 @@ import subprocess
 import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from app.application.services.alignment_preview import (
+    AlignmentPreviewError,
+    AlignmentRegionOptions,
+    alignment_preview_cache,
+    extract_region,
+    inspect_alignment,
+)
 from app.application.services.file_service import FileService
 from app.application.errors.exceptions import NotFoundError
 from app.interfaces.dependencies import get_file_service, get_current_user, get_optional_current_user, verify_signature
@@ -62,11 +70,31 @@ class MolecularPreviewResponse(BaseModel):
     supports_unit_cell: bool
 
 
+class AlignmentPreviewRequest(BaseModel):
+    file_id: str
+
+
+class AlignmentRegionPreviewRequest(BaseModel):
+    file_id: str
+    preview_id: str = Field(min_length=16, max_length=128)
+    reference: str = Field(min_length=1, max_length=512)
+    start: int = Field(ge=0)
+    end: int = Field(gt=0)
+    max_reads: int = Field(default=500, ge=1, le=2000)
+    bin_count: int = Field(default=500, ge=20, le=1000)
+
+
+class AlignmentPreviewReleaseRequest(BaseModel):
+    file_id: str
+    preview_id: str = Field(min_length=16, max_length=128)
+
+
 _SHAPEFILE_COMPONENTS = {".shp", ".shx", ".dbf", ".prj", ".cpg"}
 _MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
 _MAX_EXPANDED_BYTES = 2 * 1024 * 1024 * 1024
 _MAX_ARCHIVE_FILES = 10000
 _MAX_MOLECULAR_PREVIEW_BYTES = 50 * 1024 * 1024
+_MAX_ALIGNMENT_PREVIEW_BYTES = 1024 * 1024 * 1024
 _MOLECULAR_FORMATS = {
     ".cif": "cif",
     ".mmcif": "cif",
@@ -131,6 +159,30 @@ def _molecular_source_format(source_name: str) -> str | None:
     if Path(source_name).name.casefold() in {"poscar", "contcar"}:
         return "vasp"
     return _MOLECULAR_FORMATS.get(Path(source_name).suffix.casefold())
+
+
+async def _prepare_alignment_preview_file(
+    file_id: str,
+    file_service: FileService,
+    user_id: str,
+) -> tuple[Path, str, str]:
+    stream, file_info = await file_service.download_file(file_id, user_id)
+    source_name = public_filename(file_info.filename)
+    suffix = Path(source_name).suffix.casefold()
+    try:
+        if suffix not in {".sam", ".bam", ".cram"}:
+            raise HTTPException(status_code=415, detail="Only SAM, BAM and CRAM previews are supported")
+        if file_info.size is not None and file_info.size > _MAX_ALIGNMENT_PREVIEW_BYTES:
+            raise HTTPException(status_code=413, detail="Alignment file exceeds the 1 GB preview limit")
+        try:
+            preview = alignment_preview_cache.create(
+                user_id, file_id, suffix, stream, max_bytes=_MAX_ALIGNMENT_PREVIEW_BYTES
+            )
+        except AlignmentPreviewError as exc:
+            raise HTTPException(status_code=413, detail=str(exc)) from exc
+        return preview.path, source_name, preview.preview_id
+    finally:
+        _close_file_stream(stream)
 
 @router.post("", response_model=APIResponse[FileInfoResponse])
 async def upload_file(
@@ -260,6 +312,52 @@ async def prepare_molecular_preview(
         ))
     finally:
         _close_file_stream(stream)
+
+
+@router.post("/alignment-preview/prepare")
+async def prepare_alignment_preview(
+    request: AlignmentPreviewRequest,
+    file_service: FileService = Depends(get_file_service),
+    current_user: User = Depends(get_current_user),
+):
+    """Return path-free SAM/BAM/CRAM header metadata for the interactive viewer."""
+    path, source_name, preview_id = await _prepare_alignment_preview_file(
+        request.file_id, file_service, current_user.id
+    )
+    try:
+        result = await run_in_threadpool(inspect_alignment, path)
+    except AlignmentPreviewError as exc:
+        alignment_preview_cache.delete(preview_id, current_user.id, request.file_id)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return APIResponse.success({"source_name": source_name, "preview_id": preview_id, **result})
+
+
+@router.post("/alignment-preview/region")
+async def preview_alignment_region(
+    request: AlignmentRegionPreviewRequest,
+    file_service: FileService = Depends(get_file_service),
+    current_user: User = Depends(get_current_user),
+):
+    """Extract a bounded alignment region without exposing storage paths."""
+    try:
+        preview = alignment_preview_cache.get(request.preview_id, current_user.id, request.file_id)
+        options = AlignmentRegionOptions(
+            reference=request.reference, start=request.start, end=request.end,
+            max_reads=request.max_reads, bin_count=request.bin_count,
+        )
+        result = await run_in_threadpool(extract_region, preview.path, options)
+    except AlignmentPreviewError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return APIResponse.success(result)
+
+
+@router.post("/alignment-preview/release")
+async def release_alignment_preview(
+    request: AlignmentPreviewReleaseRequest,
+    current_user: User = Depends(get_current_user),
+):
+    alignment_preview_cache.delete(request.preview_id, current_user.id, request.file_id)
+    return APIResponse.success(None)
 
 
 def _large_upload_status_response(session) -> LargeUploadStatusResponse:

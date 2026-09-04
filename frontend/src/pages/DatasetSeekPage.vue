@@ -450,7 +450,7 @@
             :is-running="isLoading"
             :attachments="datasetChatAttachments"
             :disabled="isLoading || !dataset"
-            :show-file-actions="false"
+            :show-file-actions="true"
             :show-mcp-actions="false"
             :placeholder="DATASET_CHAT_PLACEHOLDER"
             skill-menu-placement="up"
@@ -562,7 +562,7 @@ const expandedDirectoryPaths = ref(new Set<string>());
 const copiedDatasetFilePath = ref<string | null>(null);
 const catalogLoading = ref(true);
 const inputMessage = ref('');
-const datasetChatAttachments: FileInfo[] = [];
+const datasetChatAttachments = ref<FileInfo[]>([]);
 const selectedSkills = ref<string[]>([]);
 const autoEnabledSkillNames = ref(new Set<string>());
 const messages = ref<Message[]>([]);
@@ -1209,15 +1209,30 @@ async function submit() {
   const question = inputMessage.value.trim();
   const selected = dataset.value;
   if (!question || !selected || isLoading.value) return;
+  const files = datasetChatAttachments.value.filter(
+    file => file.file_id && !file.file_id.startsWith('temp-'),
+  );
   inputMessage.value = '';
   startUserTurn();
   messages.value.push({ type: 'user', content: { content: question, timestamp: Math.floor(Date.now() / 1000) } as MessageContent });
+  if (files.length) {
+    messages.value.push({
+      type: 'attachments',
+      content: { role: 'user', attachments: files } as AttachmentsContent,
+    });
+  }
+  datasetChatAttachments.value = [];
   taskStartedAtMs.value = performance.now();
   isLoading.value = true;
   loadingStatus.value = '正在关联数据集...';
   try {
     const activeSessionId = await ensureSession();
-    const capabilities = buildDatasetChatCapabilities(selected.dataset_id, selectedSkills.value);
+    const capabilities = buildDatasetChatCapabilities(
+      selected.dataset_id,
+      selectedSkills.value,
+      [],
+      files.map(file => ({ file_id: file.file_id, filename: file.filename })),
+    );
     cancelChat = await chatWithSession(
       activeSessionId,
       question,
@@ -1254,6 +1269,7 @@ function clearConversationState() {
   shouldFollowTimeline.value = true;
   lastEventId.value = undefined;
   messages.value = [];
+  datasetChatAttachments.value = [];
   expandedTaskSummaries.value = new Set();
   currentPlan.value = undefined;
   lastTool.value = undefined;

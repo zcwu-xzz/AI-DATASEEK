@@ -147,7 +147,10 @@ class PluginToolkit(BaseToolkit):
         payload = base64.urlsafe_b64encode(
             json.dumps(arguments, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         ).decode("ascii")
-        timeout = max(1, min(int(definition.get("timeout_seconds", 90)), 120))
+        # Scientific transforms can legitimately exceed two minutes on large
+        # local files.  This is a per-process deadline, not an Agent tool-call
+        # round budget, so raising the cap does not allow unbounded tool loops.
+        timeout = max(1, min(int(definition.get("timeout_seconds", 90)), 300))
         command = (
             f"ai-dataseek-tool run {shlex.quote(tool_name)} "
             f"--arguments-base64 {shlex.quote(payload)}"
@@ -182,6 +185,11 @@ class PluginToolkit(BaseToolkit):
                 output_data.get("output_path"),
                 output_data.get("interactive_output_path"),
             ]
+            declared_attachments = output_data.get("attachments")
+            if isinstance(declared_attachments, list):
+                # A workflow may produce several independently useful files.
+                # Keep the list bounded before validating every path below.
+                candidate_values.extend(declared_attachments[:100])
             requested = arguments.get("output_path")
             if isinstance(requested, str):
                 candidate_values.append(requested)
@@ -191,8 +199,9 @@ class PluginToolkit(BaseToolkit):
                 if not isinstance(value, str):
                     continue
                 path = PurePosixPath(value)
-                if path.is_absolute() and path.is_relative_to(PurePosixPath("/home/ubuntu/output")) and path not in attachments:
-                    attachments.append(str(path))
+                normalized = str(path)
+                if path.is_absolute() and path.is_relative_to(PurePosixPath("/home/ubuntu/output")) and normalized not in attachments:
+                    attachments.append(normalized)
             if attachments:
                 output_data["attachments"] = attachments
                 output = json.dumps(output_data, ensure_ascii=False)

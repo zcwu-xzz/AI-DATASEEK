@@ -118,5 +118,59 @@ def main():
     for c2,s2,e2,y in other:
      if c==c2 and max(s,s2)<min(e,e2): out.append([c,max(s,s2),min(e,e2)])
    Path(a['output_path']).parent.mkdir(parents=True,exist_ok=True); Path(a['output_path']).write_text('\n'.join('\t'.join(map(str,x)) for x in out)+'\n'); emit({'output_path':a['output_path'],'intersections':len(out)}); return
+ if op in {'vcf_sample_qc','vcf_allele_frequency','vcf_titv_profile','vcf_genotype_matrix_export'}:
+  hs,rs=vcf(p); column=next((line for line in reversed(hs) if line.startswith('#CHROM')),None); samples=column.split('\t')[9:] if column else []
+  def parsed_gt(row):
+   keys=row[8].split(':') if len(row)>8 else []; gt_index=keys.index('GT') if 'GT' in keys else 0; values=[]
+   for sample in row[9:]:
+    fields=sample.split(':'); values.append(fields[gt_index] if gt_index<len(fields) else './.')
+   return values
+  if op=='vcf_sample_qc':
+   counters=[Counter() for _ in samples]
+   for row in rs:
+    for index,gt in enumerate(parsed_gt(row)):
+     alleles=gt.replace('|','/').split('/')
+     if not alleles or any(x=='.' for x in alleles): counters[index]['missing']+=1
+     elif len(set(alleles))>1: counters[index]['heterozygous']+=1
+     elif all(x=='0' for x in alleles): counters[index]['hom_ref']+=1
+     else: counters[index]['hom_alt']+=1
+   result=[]
+   for name,c in zip(samples,counters):
+    total=sum(c.values()); called=total-c['missing']; result.append({'sample':name,'records':total,'called':called,'call_rate':called/total if total else 0,'missing_rate':c['missing']/total if total else 0,'heterozygosity':c['heterozygous']/called if called else 0,'hom_ref':c['hom_ref'],'hom_alt':c['hom_alt']})
+   emit({'sample_count':len(samples),'variant_count':len(rs),'samples':result}); return
+  if op=='vcf_allele_frequency':
+   records_out=[]; limit=max(1,min(1000000,int(a.get('max_records',100000))))
+   for row in rs[:limit]:
+    alt_count=called=0
+    for gt in parsed_gt(row):
+     for allele in gt.replace('|','/').split('/'):
+      if allele=='.': continue
+      called+=1
+      if allele!='0': alt_count+=1
+    frequency=alt_count/called if called else None
+    records_out.append({'chromosome':row[0],'position':int(row[1]),'id':row[2],'ref':row[3],'alt':row[4],'alternate_allele_count':alt_count,'called_alleles':called,'alternate_allele_frequency':frequency,'minor_allele_frequency':min(frequency,1-frequency) if frequency is not None else None})
+   emit({'variant_count':len(rs),'returned_records':len(records_out),'truncated':len(rs)>limit,'variants':records_out}); return
+  if op=='vcf_titv_profile':
+   transitions={('A','G'),('G','A'),('C','T'),('T','C')}; spectrum=Counter(); ti=tv=0
+   for row in rs:
+    ref=row[3].upper()
+    for alt in row[4].upper().split(','):
+     if len(ref)!=1 or len(alt)!=1 or ref not in 'ACGT' or alt not in 'ACGT': continue
+     spectrum[f'{ref}>{alt}']+=1
+     if (ref,alt) in transitions: ti+=1
+     else: tv+=1
+   emit({'transitions':ti,'transversions':tv,'ti_tv_ratio':ti/tv if tv else None,'substitution_spectrum':dict(sorted(spectrum.items()))}); return
+  if op=='vcf_genotype_matrix_export':
+   import csv
+   destination=Path(a['output_path']); destination.parent.mkdir(parents=True,exist_ok=True); encoding=a.get('encoding','dosage')
+   with destination.open('w',newline='',encoding='utf-8-sig') as handle:
+    writer=csv.writer(handle); writer.writerow(['variant_id','chromosome','position','ref','alt',*samples])
+    for row in rs:
+     values=[]
+     for gt in parsed_gt(row):
+      if encoding=='genotype': values.append(gt); continue
+      alleles=gt.replace('|','/').split('/'); values.append('' if not alleles or any(x=='.' for x in alleles) else sum(x!='0' for x in alleles))
+     writer.writerow([row[2] if row[2]!='.' else f'{row[0]}:{row[1]}:{row[3]}:{row[4]}',row[0],row[1],row[3],row[4],*values])
+   emit({'output_path':destination.name,'variant_count':len(rs),'sample_count':len(samples),'encoding':encoding}); return
  fail(f'未知工具: {op}')
 if __name__=='__main__': main()

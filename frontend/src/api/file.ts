@@ -47,6 +47,90 @@ export async function prepareMolecularPreview(fileId: string): Promise<Molecular
   return response.data.data;
 }
 
+export interface AlignmentReference {
+  name: string;
+  length: number;
+}
+
+export interface AlignmentPreviewPreparation {
+  source_name: string;
+  preview_id: string;
+  format: 'SAM' | 'BAM' | 'CRAM';
+  references: AlignmentReference[];
+  sort_order?: string;
+  read_groups: number;
+  suggested_reference?: string;
+  suggested_start?: number;
+}
+
+export interface AlignmentPreviewRead {
+  name: string;
+  start: number;
+  end: number;
+  reverse: boolean;
+  mapq: number;
+  cigar: string;
+  paired: boolean;
+  duplicate: boolean;
+  secondary: boolean;
+  supplementary: boolean;
+  read1: boolean;
+  read2: boolean;
+  mate_start?: number;
+  mate_reference?: string;
+  template_length: number;
+  read_group?: string;
+  nm?: number;
+  md?: string;
+  blocks: Array<{ start: number; end: number }>;
+  mismatches: Array<{ position: number; query_base: string; reference_base: string }>;
+  insertions: Array<{ position: number; length: number; sequence: string }>;
+  deletions: Array<{ start: number; end: number; length: number }>;
+  splices: Array<{ start: number; end: number; length: number }>;
+}
+
+export interface AlignmentRegionPreview {
+  reference: string;
+  start: number;
+  end: number;
+  bin_width: number;
+  coverage: Array<{ start: number; end: number; depth: number }>;
+  reads: AlignmentPreviewRead[];
+  returned_reads: number;
+  scanned_overlapping_reads: number;
+  truncated: boolean;
+}
+
+export async function prepareAlignmentPreview(fileId: string): Promise<AlignmentPreviewPreparation> {
+  const response = await apiClient.post<ApiResponse<AlignmentPreviewPreparation>>(
+    '/files/alignment-preview/prepare',
+    { file_id: fileId },
+  );
+  return response.data.data;
+}
+
+export async function previewAlignmentRegion(
+  fileId: string,
+  previewId: string,
+  reference: string,
+  start: number,
+  end: number,
+  maxReads = 500,
+): Promise<AlignmentRegionPreview> {
+  const response = await apiClient.post<ApiResponse<AlignmentRegionPreview>>(
+    '/files/alignment-preview/region',
+    { file_id: fileId, preview_id: previewId, reference, start, end, max_reads: maxReads, bin_count: 500 },
+  );
+  return response.data.data;
+}
+
+export async function releaseAlignmentPreview(fileId: string, previewId: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/files/alignment-preview/release', {
+    file_id: fileId,
+    preview_id: previewId,
+  });
+}
+
 export interface LargeUploadInitResponse {
   upload_id: string;
   file_id: string;
