@@ -36,7 +36,14 @@ def test_runner_discovers_builtin_scientific_tools():
     assert "vector_geometry_repair" in registry
     assert "space_fits_inspect" in registry
     assert "space_quality_report" in registry
+    assert "astronomy_fits_validate" in registry
+    assert "astronomy_image_mosaic" in registry
+    assert "astronomy_spectrum_line_measure" in registry
+    assert "astronomy_lightcurve_periodogram" in registry
     assert "sequence_inspect" in registry
+    assert "math_array_inspect" in registry
+    assert "math_matrix_svd" in registry
+    assert "math_tensor_visualize" in registry
 
 
 def test_runner_rejects_duplicate_names(tmp_path):

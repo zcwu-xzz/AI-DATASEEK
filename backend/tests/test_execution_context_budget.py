@@ -76,6 +76,166 @@ def _preview_agent(tool_result: Any) -> ExecutionAgent:
     return agent
 
 
+def test_manifest_policy_suppresses_redundant_preflight_for_same_target():
+    agent = object.__new__(ExecutionAgent)
+    policies = {
+        "inspect": {"role": "preflight", "terminal_on_success": False},
+        "slice": {
+            "role": "operation",
+            "terminal_on_success": True,
+            "supersedes": ["inspect", "validate"],
+        },
+        "validate": {"role": "operation", "terminal_on_success": True},
+    }
+    agent.get_tool_execution_policy = lambda name: policies.get(name, {})
+    calls = [
+        {"name": "inspect", "args": {"input_path": "/data/a.fits"}, "id": "1"},
+        {"name": "validate", "args": {"input_path": "/data/a.fits"}, "id": "2"},
+        {"name": "slice", "args": {"input_path": "/data/a.fits"}, "id": "3"},
+    ]
+
+    selected = agent._prepare_tool_calls(calls)
+
+    assert [call["name"] for call in selected] == ["slice"]
+
+
+def test_terminal_plugin_result_enters_tool_free_completion_and_keeps_artifact():
+    agent = object.__new__(ExecutionAgent)
+    agent._current_message = Message(message="提取一维光谱")
+    agent.get_tool_execution_policy = lambda name: {
+        "plugin": "astronomy",
+        "role": "operation",
+        "terminal_on_success": name == "spectrum_extract",
+        "supersedes": [],
+    }
+    payload = {
+        "success": True,
+        "summary": {"sample_count": 128},
+        "output_path": "/home/ubuntu/output/spectrum.csv",
+    }
+    result = ToolMessage(
+        tool_call_id="call",
+        name="spectrum_extract",
+        content=json.dumps(payload),
+        artifact=ToolResult(
+            success=True,
+            data={
+                "status": "completed",
+                "returncode": 0,
+                "output": json.dumps(payload),
+                "attachments": ["/home/ubuntu/output/spectrum.csv"],
+            },
+        ),
+    )
+
+    instruction = agent._tool_free_completion_instruction([result])
+
+    assert instruction is not None
+    assert "only final synthesis turn" in instruction
+    assert agent._terminal_plugin_attachments == ["/home/ubuntu/output/spectrum.csv"]
+
+
+@pytest.mark.asyncio
+async def test_internal_control_instruction_is_not_accepted_as_final_answer():
+    agent = object.__new__(ExecutionAgent)
+
+    async def parse_json(_value):
+        return {
+            "success": True,
+            "result": "无需询问，直接返回结论。",
+            "attachments": [],
+        }
+
+    agent._parse_json = parse_json
+
+    assert await agent._decode_execution_result("ignored") is None
+
+
+def test_non_blocking_wait_is_rejected_after_terminal_plugin_success():
+    agent = object.__new__(ExecutionAgent)
+    agent.get_tool_execution_policy = lambda name: {
+        "terminal_on_success": name == "astronomy_wcs_validate"
+    }
+    successful = [(
+        {"name": "astronomy_wcs_validate", "args": {}, "id": "done"},
+        ToolMessage(
+            tool_call_id="done",
+            name="astronomy_wcs_validate",
+            content="{}",
+            artifact=ToolResult(success=True),
+        ),
+    )]
+
+    assert agent._permit_message_ask_user(
+        {
+            "name": "message_ask_user",
+            "args": {"text": "无需询问，直接返回结论。"},
+            "id": "wait",
+        },
+        successful,
+    ) is False
+
+
+@pytest.mark.asyncio
+async def test_terminal_plugin_success_allows_only_one_tool_and_one_no_tool_answer():
+    agent = object.__new__(ExecutionAgent)
+    agent.format = "json_object"
+    agent.max_iterations = 12
+    agent.MAX_CONFIGURED_ITERATIONS = 64
+    agent.TOOL_FREE_COMPLETION_TIMEOUT_SECONDS = 1
+    agent.TOOL_FREE_COMPLETION_MAX_TOKENS = 1024
+    agent.name = "execution"
+    agent.usage_context = {}
+    agent._current_message = Message(message="检查 WCS")
+    first = AIMessage(content="", tool_calls=[{
+        "name": "astronomy_wcs_validate",
+        "args": {"input_path": "/home/ubuntu/output/a.fits"},
+        "id": "tool-1",
+    }])
+    agent.ask = AsyncMock(return_value=first)
+    final = AIMessage(content=json.dumps({
+        "success": True,
+        "result": "WCS 坐标轴、单位和参考点有效。",
+        "attachments": [],
+    }, ensure_ascii=False))
+    agent.ask_with_messages = AsyncMock(return_value=final)
+    tool = SimpleNamespace(
+        name="astronomy_wcs_validate",
+        toolkit=SimpleNamespace(name="plugin"),
+    )
+    agent.get_tool = lambda name: tool if name == tool.name else None
+    agent.get_tool_execution_policy = lambda name: {
+        "plugin": "astronomy",
+        "role": "operation",
+        "terminal_on_success": name == tool.name,
+        "supersedes": [],
+    }
+    payload = {"success": True, "summary": {"valid": True}}
+    agent.invoke_tool = AsyncMock(return_value=ToolMessage(
+        tool_call_id="tool-1",
+        name=tool.name,
+        content=json.dumps(payload),
+        artifact=ToolResult(
+            success=True,
+            data={
+                "status": "completed",
+                "returncode": 0,
+                "output": json.dumps(payload),
+            },
+        ),
+    ))
+
+    events = [event async for event in agent.execute("检查 WCS")]
+
+    assert agent.invoke_tool.await_count == 1
+    agent.ask_with_messages.assert_awaited_once()
+    assert agent.ask_with_messages.await_args.kwargs["allow_tools"] is False
+    assert [event for event in events if isinstance(event, ToolEvent)]
+    assert [event.message for event in events if isinstance(event, MessageEvent)] == [
+        final.content
+    ]
+
+
 @pytest.mark.asyncio
 async def test_reset_context_discards_prior_user_and_tool_transcripts():
     memory = Memory(messages=[

@@ -19,7 +19,17 @@ from app.application.services.alignment_preview import (
     extract_region,
     inspect_alignment,
 )
+from app.application.services.astronomy_preview import (
+    AstronomyPreviewError,
+    astronomy_preview_cache,
+    detect_sources as detect_astronomy_sources,
+    inspect_pixel as inspect_astronomy_pixel,
+    inspect_preview as inspect_astronomy_preview,
+    inspect_region as inspect_astronomy_region,
+    render_plane as render_astronomy_plane,
+)
 from app.application.services.file_service import FileService
+from app.application.services.matrix_preview import MatrixPreviewError, matrix_preview_cache, describe as describe_matrix, render as render_matrix
 from app.application.errors.exceptions import NotFoundError
 from app.interfaces.dependencies import get_file_service, get_current_user, get_optional_current_user, verify_signature
 from app.domain.models.user import User
@@ -87,6 +97,90 @@ class AlignmentRegionPreviewRequest(BaseModel):
 class AlignmentPreviewReleaseRequest(BaseModel):
     file_id: str
     preview_id: str = Field(min_length=16, max_length=128)
+
+
+class AstronomyPreviewRequest(BaseModel):
+    file_id: str
+
+
+class MatrixRenderRequest(AlignmentPreviewReleaseRequest):
+    variable: str = Field(min_length=1, max_length=1024)
+    axes: list[int] = Field(default_factory=lambda: [0, 1], max_length=2)
+    indices: list[int] = Field(default_factory=list, max_length=16)
+    component: str = Field(default='real', pattern='^(real|imaginary|magnitude|phase)$')
+
+
+@router.post('/matrix-preview/prepare')
+async def prepare_matrix_preview(
+    request: AstronomyPreviewRequest,
+    file_service: FileService = Depends(get_file_service),
+    current_user: User = Depends(get_current_user),
+):
+    stream, file_info = await file_service.download_file(request.file_id, current_user.id)
+    entry = None
+    try:
+        entry = await run_in_threadpool(matrix_preview_cache.create, current_user.id, request.file_id,
+                                       public_filename(file_info.filename), stream, declared_size=file_info.size)
+        return APIResponse.success(await run_in_threadpool(describe_matrix, entry))
+    except Exception as exc:
+        if entry:
+            matrix_preview_cache.delete(entry.preview_id, current_user.id, request.file_id)
+        logger.warning('Matrix preview preparation failed: %s', type(exc).__name__)
+        message = str(exc) if isinstance(exc, (MatrixPreviewError, AstronomyPreviewError)) else '矩阵文件解析失败，请检查格式和文件完整性'
+        raise HTTPException(status_code=422, detail=message) from exc
+    finally:
+        _close_file_stream(stream)
+
+
+@router.post('/matrix-preview/render')
+async def render_matrix_preview(request: MatrixRenderRequest, current_user: User = Depends(get_current_user)):
+    try:
+        entry = matrix_preview_cache.get(request.preview_id, current_user.id, request.file_id)
+        return APIResponse.success(await run_in_threadpool(render_matrix, entry, request.variable,
+                                                           request.axes, request.indices, request.component))
+    except Exception as exc:
+        logger.warning('Matrix preview rendering failed: %s', type(exc).__name__)
+        message = str(exc) if isinstance(exc, (MatrixPreviewError, AstronomyPreviewError)) else '矩阵切片读取失败'
+        raise HTTPException(status_code=422, detail=message) from exc
+
+
+@router.post('/matrix-preview/release')
+async def release_matrix_preview(request: AlignmentPreviewReleaseRequest, current_user: User = Depends(get_current_user)):
+    matrix_preview_cache.delete(request.preview_id, current_user.id, request.file_id)
+    return APIResponse.success(None)
+
+
+class AstronomyPreviewSelectionRequest(BaseModel):
+    file_id: str
+    preview_id: str = Field(min_length=16, max_length=128)
+    dataset_index: int = Field(default=0, ge=0, le=10000)
+    slice_indices: list[int] = Field(default_factory=list, max_length=16)
+    band: int = Field(default=1, ge=0, le=1024)
+
+
+class AstronomyRenderRequest(AstronomyPreviewSelectionRequest):
+    stretch: str = Field(default="linear", pattern="^(linear|log|sqrt|asinh)$")
+    interval: str = Field(default="zscale", pattern="^(zscale|percentile|manual)$")
+    low: float | None = None
+    high: float | None = None
+    colour_map: str = Field(default="gray", pattern="^(gray|viridis|heat|cool)$")
+    invert: bool = False
+
+
+class AstronomyPixelRequest(AstronomyPreviewSelectionRequest):
+    x: int = Field(ge=0)
+    y: int = Field(ge=0)
+
+
+class AstronomyRegionRequest(AstronomyPreviewSelectionRequest):
+    x0: int = Field(ge=0)
+    y0: int = Field(ge=0)
+    x1: int = Field(ge=0)
+    y1: int = Field(ge=0)
+
+
+class AstronomySourceRequest(AstronomyPreviewSelectionRequest):
+    threshold_sigma: float = Field(default=5, ge=1, le=100)
 
 
 _SHAPEFILE_COMPONENTS = {".shp", ".shx", ".dbf", ".prj", ".cpg"}
@@ -357,6 +451,129 @@ async def release_alignment_preview(
     current_user: User = Depends(get_current_user),
 ):
     alignment_preview_cache.delete(request.preview_id, current_user.id, request.file_id)
+    return APIResponse.success(None)
+
+
+@router.post("/astronomy-preview/prepare")
+async def prepare_astronomy_preview(
+    request: AstronomyPreviewRequest,
+    file_service: FileService = Depends(get_file_service),
+    current_user: User = Depends(get_current_user),
+):
+    """Prepare a private FITS/TIFF source for bounded interactive rendering."""
+    stream, file_info = await file_service.download_file(request.file_id, current_user.id)
+    try:
+        entry = astronomy_preview_cache.create(
+            current_user.id,
+            request.file_id,
+            public_filename(file_info.filename),
+            stream,
+            declared_size=file_info.size,
+        )
+        result = await run_in_threadpool(inspect_astronomy_preview, entry)
+    except AstronomyPreviewError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    finally:
+        _close_file_stream(stream)
+    return APIResponse.success(result)
+
+
+def _astronomy_entry(request, current_user: User):
+    return astronomy_preview_cache.get(request.preview_id, current_user.id, request.file_id)
+
+
+@router.post("/astronomy-preview/render")
+async def render_astronomy_preview(
+    request: AstronomyRenderRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        entry = _astronomy_entry(request, current_user)
+        result = await run_in_threadpool(
+            render_astronomy_plane,
+            entry,
+            dataset_index=request.dataset_index,
+            slice_indices=request.slice_indices,
+            band=request.band,
+            stretch=request.stretch,
+            interval=request.interval,
+            low=request.low,
+            high=request.high,
+            colour_map=request.colour_map,
+            invert=request.invert,
+        )
+    except AstronomyPreviewError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return APIResponse.success(result)
+
+
+@router.post("/astronomy-preview/pixel")
+async def astronomy_preview_pixel(
+    request: AstronomyPixelRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = await run_in_threadpool(
+            inspect_astronomy_pixel,
+            _astronomy_entry(request, current_user),
+            dataset_index=request.dataset_index,
+            slice_indices=request.slice_indices,
+            band=request.band,
+            x=request.x,
+            y=request.y,
+        )
+    except AstronomyPreviewError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return APIResponse.success(result)
+
+
+@router.post("/astronomy-preview/region")
+async def astronomy_preview_region(
+    request: AstronomyRegionRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = await run_in_threadpool(
+            inspect_astronomy_region,
+            _astronomy_entry(request, current_user),
+            dataset_index=request.dataset_index,
+            slice_indices=request.slice_indices,
+            band=request.band,
+            x0=request.x0,
+            y0=request.y0,
+            x1=request.x1,
+            y1=request.y1,
+        )
+    except AstronomyPreviewError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return APIResponse.success(result)
+
+
+@router.post("/astronomy-preview/sources")
+async def astronomy_preview_sources(
+    request: AstronomySourceRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = await run_in_threadpool(
+            detect_astronomy_sources,
+            _astronomy_entry(request, current_user),
+            dataset_index=request.dataset_index,
+            slice_indices=request.slice_indices,
+            band=request.band,
+            threshold_sigma=request.threshold_sigma,
+        )
+    except AstronomyPreviewError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return APIResponse.success(result)
+
+
+@router.post("/astronomy-preview/release")
+async def release_astronomy_preview(
+    request: AstronomyPreviewSelectionRequest,
+    current_user: User = Depends(get_current_user),
+):
+    astronomy_preview_cache.delete(request.preview_id, current_user.id, request.file_id)
     return APIResponse.success(None)
 
 

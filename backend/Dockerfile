@@ -1,5 +1,4 @@
-FROM docker.1ms.run/python:3.12-slim
-
+FROM --platform=linux/amd64 docker.1ms.run/python:3.12-slim
 WORKDIR /app
 
 # Keep image builds reliable on hosts where direct access to the Debian CDN is
@@ -29,7 +28,10 @@ ENV PATH="/opt/venv/bin:${PATH}"
 
 # Install dependencies
 COPY backend/pyproject.toml backend/uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+# Frozen locks retain wheel URLs even when UV_INDEX_URL is set. Route those
+# downloads through the configured build mirror; versions and hashes stay pinned.
+RUN sed -i 's|https://files.pythonhosted.org/packages/|https://mirrors.aliyun.com/pypi/packages/|g' uv.lock && \
+    uv sync --frozen --no-dev --no-install-project
 
 # Copy project files
 COPY backend/. .

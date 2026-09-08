@@ -27,8 +27,12 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     )
 
     names = _tool_names(toolkit)
-    assert len(names) == 383
+    assert len(names) == 469
     assert "scientific_inspect" in names
+    assert "math_array_inspect" in names
+    assert "math_vector_statistics" in names
+    assert "math_matrix_svd" in names
+    assert "math_tensor_contract" in names
     assert "scientific_netcdf_visualize" in names
     assert "geoscience_collection_inspect" in names
     assert "geoscience_zonal_statistics" in names
@@ -66,6 +70,10 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     assert "fastq_qc_clean_workflow" in names
     assert "alignment_coverage_accurate" in names
     assert "alignment_region_analysis_workflow" in names
+    assert "astronomy_fits_cube_moment" in names
+    assert "astronomy_source_catalog" in names
+    assert "astronomy_lightcurve_periodogram" in names
+    assert "astronomy_catalog_crossmatch" in names
     assert names == toolkit.dataset_fast_path_tool_names
     inspect = next(
         item for item in toolkit.get_tools()
@@ -73,6 +81,19 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     )
     assert inspect["function"]["parameters"]["required"] == ["input_path"]
     assert "id" not in inspect["function"]["parameters"]["properties"]
+    assert toolkit.get_tool_execution_policy("astronomy_fits_cube_slice") == {
+        "plugin": "astronomy",
+        "role": "operation",
+        "terminal_on_success": True,
+        "supersedes": [
+            "astronomy_fits_validate",
+            "astronomy_wcs_validate",
+            "space_fits_inspect",
+        ],
+    }
+    assert toolkit.get_tool_execution_policy("astronomy_fits_validate")["role"] == "preflight"
+    assert toolkit.get_tool_execution_policy("astronomy_fits_validate")["terminal_on_success"] is False
+    assert toolkit.get_tool_execution_policy("scientific_inspect")["terminal_on_success"] is False
 
 
 @pytest.mark.asyncio

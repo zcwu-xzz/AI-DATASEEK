@@ -6,7 +6,7 @@ import UnknownFilePreview from '../components/filePreviews/UnknownFilePreview.vu
 import MarkdownFilePreview from '../components/filePreviews/MarkdownFilePreview.vue';
 import CodeFilePreview from '../components/filePreviews/CodeFilePreview.vue';
 import ImageFilePreview from '../components/filePreviews/ImageFilePreview.vue';
-import TiffFilePreview from '../components/filePreviews/TiffFilePreview.vue';
+import AstronomyImagePreview from '../components/filePreviews/AstronomyImagePreview.vue';
 import ShapefilePreview from '../components/filePreviews/ShapefilePreview.vue';
 import HtmlFilePreview from '../components/filePreviews/HtmlFilePreview.vue';
 import CsvFilePreview from '../components/filePreviews/CsvFilePreview.vue';
@@ -38,6 +38,7 @@ const imageFileExtensions = [
 ];
 
 const tiffFileExtensions = ['tif', 'tiff'];
+const fitsFileExtensions = ['fits', 'fit', 'fts', 'fz'];
 const shapefileExtensions = ['shp', 'shx', 'dbf', 'prj', 'cpg'];
 const htmlFileExtensions = ['html', 'htm'];
 
@@ -74,6 +75,9 @@ export const getFileType = (filename: string): FileType => {
   }
   if (['sam', 'bam', 'cram'].includes(biologicalExtension)) {
     return { icon: FileIcon, preview: AlignmentFilePreview };
+  }
+  if (normalizedName.endsWith('.fits.gz') || fitsFileExtensions.includes(biologicalExtension) || tiffFileExtensions.includes(biologicalExtension)) {
+    return { icon: FileIcon, preview: AstronomyImagePreview };
   }
   const renderer = findRendererByFilename(filename);
   if (renderer) {
@@ -114,7 +118,7 @@ export const getFileType = (filename: string): FileType => {
   if (file_extension && tiffFileExtensions.includes(file_extension)) {
     return {
       icon: FileIcon,
-      preview: TiffFilePreview,
+      preview: AstronomyImagePreview,
     };
   }
 

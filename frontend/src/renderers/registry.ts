@@ -2,7 +2,8 @@ import type { Component } from 'vue';
 import FileIcon from '@/components/icons/FileIcon.vue';
 import ImageFilePreview from '@/components/filePreviews/ImageFilePreview.vue';
 import ObjFilePreview from '@/components/filePreviews/ObjFilePreview.vue';
-import TiffFilePreview from '@/components/filePreviews/TiffFilePreview.vue';
+import AstronomyImagePreview from '@/components/filePreviews/AstronomyImagePreview.vue';
+import MatrixFilePreview from '@/components/filePreviews/MatrixFilePreview.vue';
 import ShapefilePreview from '@/components/filePreviews/ShapefilePreview.vue';
 import HtmlFilePreview from '@/components/filePreviews/HtmlFilePreview.vue';
 import MolecularStructurePreview from '@/components/filePreviews/MolecularStructurePreview.vue';
@@ -35,6 +36,14 @@ export interface RendererDefinition {
 }
 
 const builtinRenderers: RendererDefinition[] = [
+  {
+    id: 'builtin-matrix', name: '高维矩阵交互预览', description: '数值数组、稀疏矩阵和高维张量的变量选择、维度切片及热力图预览。', kind: 'builtin',
+    extensions: ['npy', 'npz', 'mtx', 'mat'], preview: MatrixFilePreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
+  },
+  {
+    id: 'builtin-astronomy-image', name: 'FITS/TIFF Scientific Image Workbench', description: 'Interactive HDU, cube slice, scientific TIFF, histogram, WCS, pixel and region viewer.', kind: 'builtin',
+    extensions: ['fits', 'fit', 'fts', 'fz', 'tif', 'tiff'], preview: AstronomyImagePreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
+  },
   {
     id: 'builtin-binary-alignment', name: 'SAM/BAM/CRAM Alignment Renderer', description: 'Interactive regional coverage and read alignment browser.', kind: 'builtin',
     extensions: ['sam', 'bam', 'cram'], preview: AlignmentFilePreview, icon: FileIcon, enabled: true, scope: 'global', editable: false, installed: true, source: 'official',
@@ -96,10 +105,10 @@ const builtinRenderers: RendererDefinition[] = [
   {
     id: 'builtin-tiff-image',
     name: 'TIFF Image Renderer',
-    description: 'Built-in renderer for TIFF and GeoTIFF images using browser-side decoding.',
+    description: 'Interactive TIFF and GeoTIFF scientific image renderer.',
     kind: 'builtin',
     extensions: ['tif', 'tiff'],
-    preview: TiffFilePreview,
+    preview: AstronomyImagePreview,
     icon: FileIcon,
     enabled: true,
     scope: 'global',

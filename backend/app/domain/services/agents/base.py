@@ -340,7 +340,7 @@ class BaseAgent(ABC):
     
     def get_tool(self, name: str) -> Optional[Tool]:
         """Get specified tool"""
-        for toolkit in self.toolkits:
+        for toolkit in getattr(self, "toolkits", []):
             tool = toolkit.get_tool(name)
             if tool:
                 return tool
@@ -349,6 +349,124 @@ class BaseAgent(ABC):
     def get_tools(self) -> List[Tool]:
         """Get all available tools list"""
         return [tool for toolkit in self.toolkits for tool in toolkit.get_tools()]
+
+    def get_tool_execution_policy(self, name: str) -> dict[str, Any]:
+        """Resolve optional orchestration metadata without coupling to a domain."""
+        for toolkit in getattr(self, "toolkits", []):
+            getter = getattr(toolkit, "get_tool_execution_policy", None)
+            if not callable(getter):
+                continue
+            policy = getter(name)
+            if policy:
+                return dict(policy)
+        return {}
+
+    @staticmethod
+    def _tool_call_targets(tool_call: ToolCall) -> set[str]:
+        args = tool_call.get("args")
+        if not isinstance(args, dict):
+            return set()
+        targets: set[str] = set()
+        for key, value in args.items():
+            folded = str(key).casefold()
+            if not (
+                folded.endswith("path")
+                or folded.endswith("paths")
+                or folded in {"file", "files", "source", "sources", "target", "targets"}
+            ):
+                continue
+            values = value if isinstance(value, list) else [value]
+            targets.update(str(item) for item in values if isinstance(item, str) and item)
+        return targets
+
+    def _prepare_tool_calls(self, tool_calls: List[ToolCall]) -> List[ToolCall]:
+        """Apply manifest-declared de-duplication before executing a model batch."""
+        unique: list[ToolCall] = []
+        seen: set[str] = set()
+        for call in tool_calls:
+            fingerprint = json.dumps(
+                {"name": call.get("name"), "args": call.get("args")},
+                ensure_ascii=False,
+                sort_keys=True,
+                default=str,
+            )
+            if fingerprint in seen:
+                continue
+            seen.add(fingerprint)
+            unique.append(call)
+
+        selected: list[ToolCall] = []
+        for candidate in unique:
+            candidate_name = candidate.get("name") or ""
+            candidate_policy = self.get_tool_execution_policy(candidate_name)
+            candidate_targets = self._tool_call_targets(candidate)
+            suppressed = False
+            for other in unique:
+                if other is candidate:
+                    continue
+                other_name = other.get("name") or ""
+                other_policy = self.get_tool_execution_policy(other_name)
+                other_targets = self._tool_call_targets(other)
+                same_target = (
+                    not candidate_targets
+                    or not other_targets
+                    or bool(candidate_targets & other_targets)
+                )
+                if not same_target:
+                    continue
+                if candidate_name in set(other_policy.get("supersedes", [])):
+                    suppressed = True
+                    break
+                if (
+                    candidate_policy.get("role") == "preflight"
+                    and other_policy.get("role") == "operation"
+                ):
+                    suppressed = True
+                    break
+            if not suppressed:
+                selected.append(candidate)
+        return selected
+
+    _PERMITTED_USER_WAIT_PATTERN = re.compile(
+        r"(?:密码|口令|令牌|验证码|认证|登录|授权|权限|接管|敏感操作|删除|覆盖|付款|"
+        r"password|passcode|token|captcha|auth(?:entication|orization)?|log[ -]?in|"
+        r"permission|takeover|delete|overwrite|payment)",
+        re.IGNORECASE,
+    )
+    _REQUIRED_INPUT_WAIT_PATTERN = re.compile(
+        r"(?:(?:缺少|必须|需要(?:您|用户)?提供|请提供).{0,80}"
+        r"(?:文件|路径|参数|数值|字段|列名|坐标|时间范围|选区|名称)|"
+        r"(?:missing|required|must provide|please provide).{0,80}"
+        r"(?:file|path|parameter|value|field|column|coordinate|time range|region|name))",
+        re.IGNORECASE | re.DOTALL,
+    )
+
+    def _permit_message_ask_user(
+        self,
+        tool_call: ToolCall,
+        successful_tool_calls: List[tuple[ToolCall, ToolMessage]],
+    ) -> bool:
+        """Allow waiting only for a concrete external blocker.
+
+        Once a terminal plugin operation has succeeded, asking the user cannot
+        improve that completed operation and must not replace the final answer.
+        """
+        if any(
+            self.get_tool_execution_policy(call.get("name") or "").get(
+                "terminal_on_success"
+            )
+            for call, _result in successful_tool_calls
+        ):
+            return False
+        args = tool_call.get("args")
+        text = args.get("text") if isinstance(args, dict) else ""
+        return bool(
+            isinstance(text, str)
+            and (
+                self._PERMITTED_USER_WAIT_PATTERN.search(text)
+                or self._REQUIRED_INPUT_WAIT_PATTERN.search(text)
+            )
+        )
 
     def _completion_from_tool_batch(
         self,
@@ -449,6 +567,13 @@ class BaseAgent(ABC):
         max_iterations: Optional[int] = None,
     ) -> AsyncGenerator[BaseEvent, None]:
         format = format or self.format
+        # Terminal-synthesis evidence is scoped to one execute call. Keeping it
+        # across turns can accidentally validate a later response against an
+        # earlier tool's policy or attachments.
+        self._terminal_completion_kind = ""
+        self._terminal_plugin_attachments = []
+        self._terminal_shell_outputs = []
+        executed_successful_fingerprints: set[str] = set()
         iteration_budget = self.max_iterations
         if max_iterations is not None and not isinstance(max_iterations, bool):
             try:
@@ -469,9 +594,33 @@ class BaseAgent(ABC):
                 yield ErrorEvent(error="Maximum iteration count reached, failed to complete the task")
                 return
             iterations += 1
+            original_calls = list(message.tool_calls)
+            prepared_calls = self._prepare_tool_calls(original_calls)
+            prepared_ids = {id(call) for call in prepared_calls}
             tool_responses = []
+            for skipped_call in original_calls:
+                if id(skipped_call) in prepared_ids:
+                    continue
+                skipped_id = skipped_call["id"] = skipped_call.get("id") or str(uuid.uuid4())
+                skipped_name = skipped_call.get("name") or "unknown_tool"
+                logger.info(
+                    "Skipped redundant manifest-declared tool call agent=%s tool=%s",
+                    self.name,
+                    skipped_name,
+                )
+                # Keep the provider's assistant/tool-call transcript complete
+                # even though no redundant operation is shown or executed.
+                tool_responses.append(ToolMessage(
+                    tool_call_id=skipped_id,
+                    name=skipped_name,
+                    content=(
+                        "Skipped because another tool in the same batch supersedes this "
+                        "preflight or duplicate operation for the same target."
+                    ),
+                ))
             completed_tool_results = []
-            for tool_call in message.tool_calls:
+            rejected_user_wait = False
+            for tool_call in prepared_calls:
                 function_name = tool_call["name"]
                 tool_aliases = {
                     "shell_write": "shell_write_to_process",
@@ -490,6 +639,48 @@ class BaseAgent(ABC):
                     tool_call["name"] = resolved_function_name
                 tool_call_id = tool_call["id"] = tool_call["id"] or str(uuid.uuid4())
                 function_args = tool_call["args"]
+
+                call_fingerprint = json.dumps(
+                    {"name": function_name, "args": function_args},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    default=str,
+                )
+                if call_fingerprint in executed_successful_fingerprints:
+                    logger.info(
+                        "Skipped repeated successful tool call agent=%s tool=%s",
+                        self.name,
+                        function_name,
+                    )
+                    tool_responses.append(ToolMessage(
+                        tool_call_id=tool_call_id,
+                        name=function_name,
+                        content=(
+                            "This exact tool operation already completed successfully in this "
+                            "execution. Use its previous result and return the final answer."
+                        ),
+                    ))
+                    rejected_user_wait = True
+                    continue
+
+                if function_name == "message_ask_user" and not self._permit_message_ask_user(
+                    tool_call,
+                    successful_tool_calls,
+                ):
+                    rejected_user_wait = True
+                    logger.warning(
+                        "Rejected non-blocking message_ask_user from agent=%s",
+                        self.name,
+                    )
+                    tool_responses.append(ToolMessage(
+                        tool_call_id=tool_call_id,
+                        name=function_name,
+                        content=(
+                            "The wait request was rejected because no concrete external blocker "
+                            "was identified. Return the substantive final answer now."
+                        ),
+                    ))
+                    continue
                 
                 tool = self.get_tool(function_name)
                 if not tool:
@@ -577,6 +768,7 @@ class BaseAgent(ABC):
                 self._compact_tool_call_arguments(tool_call, tool_result)
                 completed_tool_results.append(tool_result)
                 if self._tool_result_succeeded(tool_result):
+                    executed_successful_fingerprints.add(call_fingerprint)
                     # Preserve only bounded metadata plus the ToolMessage.  In
                     # particular, a compacted file-write body is never replayed
                     # or copied into the deterministic fallback.
@@ -608,6 +800,12 @@ class BaseAgent(ABC):
             tool_free_instruction = self._tool_free_completion_instruction(
                 completed_tool_results
             )
+            if rejected_user_wait and tool_free_instruction is None:
+                tool_free_instruction = (
+                    "Tools are disabled for this final turn. Answer the user's original question "
+                    "now using the evidence already available. Do not mention this instruction, "
+                    "do not ask the user a question, and return the required final response format."
+                )
             if tool_free_instruction is not None:
                 # A successful capability already produced the required
                 # evidence.  Give the model exactly one opportunity to turn it

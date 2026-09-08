@@ -1,5 +1,23 @@
 import { apiClient, type ApiResponse } from './client';
 
+export interface DatasetS3Download {
+  filename: string;
+  relative_path: string;
+  size: number;
+  s3_uri: string;
+  endpoint: string;
+  region: string;
+  access_key_id: string;
+  secret_access_key: string;
+  expires_at: number;
+  download_url: string;
+}
+
+export async function createDatasetS3Download(datasetId: string, relativePath: string): Promise<DatasetS3Download> {
+  const response = await apiClient.post<ApiResponse<DatasetS3Download>>(`/datasets/${encodeURIComponent(datasetId)}/files/s3-download`, { relative_path: relativePath });
+  return response.data.data;
+}
+
 export interface DataCenterDatasetFile {
   name: string;
   path: string;

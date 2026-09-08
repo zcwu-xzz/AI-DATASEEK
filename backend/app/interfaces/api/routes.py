@@ -4,6 +4,7 @@ from . import (
     agent_profile_routes,
     config_routes,
     dataset_routes,
+    dataset_s3_routes,
     file_routes,
     mcp_routes,
     renderer_routes,
@@ -25,6 +26,7 @@ def create_api_router() -> APIRouter:
     api_router.include_router(renderer_routes.router)
     api_router.include_router(admin_routes.router)
     api_router.include_router(dataset_routes.router)
+    api_router.include_router(dataset_s3_routes.router)
 
     return api_router
 

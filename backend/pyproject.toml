@@ -41,6 +41,13 @@ dependencies = [
     "uvicorn>=0.38.0",
     "websockets>=15.0.1",
     "pysam==0.22.1",
+    "astropy>=6.1,<8",
+    "numpy>=2.0,<3",
+    "pillow>=11,<13",
+    "tifffile>=2025.1,<2027",
+    "rasterio>=1.4.3,<2",
+    "scipy>=1.14,<2",
+    "h5py>=3.11,<4",
 ]
 
 [dependency-groups]

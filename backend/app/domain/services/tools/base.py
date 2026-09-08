@@ -93,3 +93,12 @@ class BaseToolkit(LangchainBaseToolkit):
             if tool.name == tool_name:
                 return tool
         return None
+
+    def get_tool_execution_policy(self, tool_name: str) -> dict[str, Any]:
+        """Return optional declarative execution metadata for one tool.
+
+        Built-in toolkits keep the historical empty policy. Plugin toolkits
+        override this method so the Agent can apply generic orchestration rules
+        without learning domain-specific tool names.
+        """
+        return {}

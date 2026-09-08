@@ -3,6 +3,22 @@ import { apiClient, API_CONFIG, BASE_URL } from './client.ts';
 import type { ApiResponse } from './client.ts';
 import type { SignedUrlResponse } from '../types/response.ts';
 
+export interface MatrixArrayInfo { name: string; shape: number[]; dtype: string; sparse: boolean }
+export interface MatrixPreparation { preview_id: string; source_name: string; arrays: MatrixArrayInfo[] }
+export interface MatrixPlane {
+  values: (number | null)[][]; rows: number[]; columns: number[]; shape: number[];
+  sampled: boolean; minimum: number | null; maximum: number | null; mean: number | null; non_finite: number;
+}
+export async function prepareMatrixPreview(fileId: string): Promise<MatrixPreparation> {
+  return (await apiClient.post<ApiResponse<MatrixPreparation>>('/files/matrix-preview/prepare', { file_id: fileId })).data.data;
+}
+export async function renderMatrixPreview(fileId: string, previewId: string, variable: string, axes: number[], indices: number[], component: string): Promise<MatrixPlane> {
+  return (await apiClient.post<ApiResponse<MatrixPlane>>('/files/matrix-preview/render', { file_id: fileId, preview_id: previewId, variable, axes, indices, component })).data.data;
+}
+export async function releaseMatrixPreview(fileId: string, previewId: string): Promise<void> {
+  await apiClient.post('/files/matrix-preview/release', { file_id: fileId, preview_id: previewId });
+}
+
 /**
  * File info type
  */
@@ -128,6 +144,99 @@ export async function releaseAlignmentPreview(fileId: string, previewId: string)
   await apiClient.post<ApiResponse<null>>('/files/alignment-preview/release', {
     file_id: fileId,
     preview_id: previewId,
+  });
+}
+
+export interface AstronomyDataset {
+  index: number;
+  name: string;
+  type?: string;
+  kind: 'image' | 'spectrum' | 'table' | 'empty';
+  shape: number[];
+  dtype?: string;
+  samples?: number;
+  columns?: Array<{ name: string; format: string; unit?: string }>;
+  row_count?: number;
+  table_preview?: Array<Record<string, any>>;
+  spectrum_preview?: Array<{ index: number; value: number | null }>;
+  wcs?: { celestial: boolean; axis_types?: string[]; units?: string[] };
+}
+
+export interface AstronomyPreviewPreparation {
+  source_name: string;
+  preview_id: string;
+  format: 'FITS' | 'TIFF' | 'GeoTIFF';
+  datasets: AstronomyDataset[];
+  selected_dataset?: number;
+  geospatial?: Record<string, any>;
+}
+
+export interface AstronomySelection {
+  file_id: string;
+  preview_id: string;
+  dataset_index: number;
+  slice_indices: number[];
+  band: number;
+}
+
+export interface AstronomyRenderResult {
+  image_base64: string;
+  source_width: number;
+  source_height: number;
+  render_width: number;
+  render_height: number;
+  display_min: number;
+  display_max: number;
+  statistics: Record<string, number | null>;
+  histogram: { counts: number[]; edges: number[] };
+  wcs?: { celestial: boolean; axis_types?: string[]; units?: string[]; corners?: number[][] };
+}
+
+export async function prepareAstronomyPreview(fileId: string): Promise<AstronomyPreviewPreparation> {
+  const response = await apiClient.post<ApiResponse<AstronomyPreviewPreparation>>(
+    '/files/astronomy-preview/prepare', { file_id: fileId },
+  );
+  return response.data.data;
+}
+
+export async function renderAstronomyPreview(
+  selection: AstronomySelection,
+  options: { stretch: string; interval: string; low?: number; high?: number; colour_map: string; invert: boolean },
+): Promise<AstronomyRenderResult> {
+  const response = await apiClient.post<ApiResponse<AstronomyRenderResult>>(
+    '/files/astronomy-preview/render', { ...selection, ...options },
+  );
+  return response.data.data;
+}
+
+export async function inspectAstronomyPixel(selection: AstronomySelection, x: number, y: number): Promise<Record<string, number | null>> {
+  const response = await apiClient.post<ApiResponse<Record<string, number | null>>>(
+    '/files/astronomy-preview/pixel', { ...selection, x, y },
+  );
+  return response.data.data;
+}
+
+export async function inspectAstronomyRegion(
+  selection: AstronomySelection, x0: number, y0: number, x1: number, y1: number,
+): Promise<Record<string, any>> {
+  const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+    '/files/astronomy-preview/region', { ...selection, x0, y0, x1, y1 },
+  );
+  return response.data.data;
+}
+
+export interface AstronomyDetectedSource {
+  id: number; x: number; y: number; peak: number; snr: number; ra_deg?: number; dec_deg?: number;
+}
+
+export async function detectAstronomySources(selection: AstronomySelection, thresholdSigma = 5): Promise<{ source_count: number; truncated: boolean; background: number; noise: number; sources: AstronomyDetectedSource[] }> {
+  const response = await apiClient.post<ApiResponse<any>>('/files/astronomy-preview/sources', { ...selection, threshold_sigma: thresholdSigma });
+  return response.data.data;
+}
+
+export async function releaseAstronomyPreview(fileId: string, previewId: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/files/astronomy-preview/release', {
+    file_id: fileId, preview_id: previewId, dataset_index: 0, slice_indices: [], band: 1,
   });
 }
 

@@ -31,6 +31,7 @@ class _PluginToolWrapper:
     def __init__(self, definition: dict[str, Any], toolkit: "PluginToolkit"):
         self.name = definition["name"]
         self.toolkit = toolkit
+        self.execution_policy = toolkit.get_tool_execution_policy(self.name)
 
     async def ainvoke(self, tool_call: dict[str, Any]) -> ToolMessage:
         args = tool_call.get("args", {}) if isinstance(tool_call, dict) else {}
@@ -80,6 +81,21 @@ class PluginToolkit(BaseToolkit):
                 raise ValueError(f"Invalid tool plugin manifest {manifest_path}: {exc}") from exc
             plugin_name = manifest.get("plugin")
             tools = manifest.get("tools")
+            default_parameters = manifest.get("default_parameters")
+            default_scopes = manifest.get("default_scopes", [])
+            if not isinstance(default_scopes, list) or not all(
+                isinstance(scope, str) and scope for scope in default_scopes
+            ):
+                raise ValueError(
+                    f"Tool plugin manifest has invalid default scopes: {manifest_path}"
+                )
+            default_execution_policy = manifest.get("default_execution_policy")
+            if default_execution_policy is None:
+                default_execution_policy = {}
+            if not isinstance(default_execution_policy, dict):
+                raise ValueError(
+                    f"Tool plugin manifest has an invalid default execution policy: {manifest_path}"
+                )
             if not isinstance(plugin_name, str) or not plugin_name.strip():
                 raise ValueError(f"Tool plugin manifest has no plugin name: {manifest_path}")
             if not isinstance(tools, list) or not tools:
@@ -90,6 +106,14 @@ class PluginToolkit(BaseToolkit):
                 name = item.get("name")
                 description = item.get("description")
                 parameters = item.get("parameters")
+                if parameters is None and isinstance(default_parameters, dict):
+                    # Plugins with a coherent family of operators may declare a
+                    # shared superset schema once. Individual operations still
+                    # validate their semantic requirements in the trusted
+                    # handler, while discovery remains fully data-driven.
+                    parameters = default_parameters
+                    item = dict(item)
+                    item["parameters"] = parameters
                 if not isinstance(name, str) or not name:
                     raise ValueError(f"Tool definition has no name in {manifest_path}")
                 if name in definitions:
@@ -116,6 +140,30 @@ class PluginToolkit(BaseToolkit):
                 if not isinstance(parameters, dict) or parameters.get("type") != "object":
                     raise ValueError(f"Plugin tool {name} has an invalid parameter schema")
                 definition = dict(item)
+                definition.setdefault("scopes", list(default_scopes))
+                role = definition.get(
+                    "role", default_execution_policy.get("role", "operation")
+                )
+                if role not in {"preflight", "operation"}:
+                    raise ValueError(f"Plugin tool {name} has an invalid execution role")
+                terminal_on_success = definition.get(
+                    "terminal_on_success",
+                    default_execution_policy.get("terminal_on_success", False),
+                )
+                if not isinstance(terminal_on_success, bool):
+                    raise ValueError(
+                        f"Plugin tool {name} has an invalid terminal_on_success flag"
+                    )
+                supersedes = definition.get(
+                    "supersedes", default_execution_policy.get("supersedes", [])
+                )
+                if not isinstance(supersedes, list) or not all(
+                    isinstance(value, str) and value for value in supersedes
+                ):
+                    raise ValueError(f"Plugin tool {name} has an invalid supersedes list")
+                definition["role"] = role
+                definition["terminal_on_success"] = terminal_on_success
+                definition["supersedes"] = list(dict.fromkeys(supersedes))
                 definition["plugin"] = plugin_name
                 definitions[name] = definition
         return definitions
@@ -139,6 +187,17 @@ class PluginToolkit(BaseToolkit):
         if not self.enabled or definition is None:
             return None
         return _PluginToolWrapper(definition, self)
+
+    def get_tool_execution_policy(self, tool_name: str) -> dict[str, Any]:
+        definition = self._definitions.get(tool_name)
+        if definition is None:
+            return {}
+        return {
+            "plugin": definition.get("plugin"),
+            "role": definition.get("role", "operation"),
+            "terminal_on_success": definition.get("terminal_on_success", False),
+            "supersedes": list(definition.get("supersedes", [])),
+        }
 
     async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> ToolResult:
         definition = self._definitions.get(tool_name)

@@ -1,0 +1,10 @@
+astropy==6.1.7
+numpy>=1.26.4,<2.0
+scipy>=1.14.1,<2.0
+pandas>=2.2.3,<3.0
+astropy-healpix==1.0.3
+astroscrappy==1.2.0
+photutils==1.13.0
+regions==0.10
+reproject==0.14.1
+specutils==1.20.3

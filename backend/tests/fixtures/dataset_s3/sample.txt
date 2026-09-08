@@ -1,0 +1,2 @@
+DataSeek S3 read-only gateway verification.
+0123456789abcdefghijklmnopqrstuvwxyz

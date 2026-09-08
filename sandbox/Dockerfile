@@ -177,7 +177,10 @@ RUN test -s /opt/ai-dataseek/tools/sequence/requirements.txt && \
     -r /opt/ai-dataseek/tools/alignment_advanced/requirements.txt \
     -r /opt/ai-dataseek/tools/genome_annotation/requirements.txt \
     -r /opt/ai-dataseek/tools/biomolecular_structure/requirements.txt \
-    -r /opt/ai-dataseek/tools/space/requirements.txt
+    -r /opt/ai-dataseek/tools/space/requirements.txt \
+    -r /opt/ai-dataseek/tools/astronomy/requirements.txt \
+    -r /opt/ai-dataseek/tools/mathematics/requirements.txt && \
+    python -c "import astropy, astropy_healpix, astroscrappy, photutils, regions, reproject, specutils; print('astronomy stack ready', astropy.__version__, photutils.__version__, specutils.__version__)"
 
 # Give agents one deterministic command for nested dataset archives instead of
 # spending model turns discovering and chaining format-specific extractors.
@@ -206,6 +209,7 @@ RUN install -m 0755 \
 # dependency so findfont can select the configured family without fallback.
 RUN python /usr/local/lib/ai-dataseek/install_noto_cjk_sc.py && \
     fc-cache -f && \
+    rm -rf /root/.cache/matplotlib /home/ubuntu/.cache/matplotlib && \
     fc-match -f '%{family}\n' 'Noto Sans CJK SC' | grep -F 'Noto Sans CJK SC'
 
 # Fail the image build if task commands would see a different Python/pip pair

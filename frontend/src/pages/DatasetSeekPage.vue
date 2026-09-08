@@ -496,9 +496,11 @@
     </div>
   </Teleport>
   <SettingsDialog />
+  <DatasetS3DownloadDialog v-if="s3DownloadPath && dataset" :key="dataset.dataset_id + ':' + s3DownloadPath" :dataset-id="dataset.dataset_id" :path="s3DownloadPath" @close="s3DownloadPath = null" />
 </template>
 
 <script setup lang="ts">
+import DatasetS3DownloadDialog from '@/components/DatasetS3DownloadDialog.vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { Check, ChevronDown, ChevronRight, CircleAlert, Clock3, Copy, Database, Download, Eye, FileText, Folder, FolderOpen, History, Image as ImageIcon, LoaderCircle, PackageOpen, PanelLeftClose, PanelLeftOpen, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
@@ -536,6 +538,8 @@ const route = useRoute();
 const { selectedProfileId, refreshProfiles } = useAgentProfile();
 const { showFilePanel } = useFilePanel();
 const dataset = ref<DataCenterDataset>();
+const s3DownloadPath = ref<string | null>(null);
+watch(() => dataset.value?.dataset_id, () => { s3DownloadPath.value = null; });
 const dataProducts = ref<DataProduct[]>([]);
 const productDialogVisible = ref(false);
 const productFileMoveVisible = ref(false);
