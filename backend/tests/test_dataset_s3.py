@@ -1,125 +1,73 @@
-import hashlib
-from datetime import datetime, timezone
+import json
 from types import SimpleNamespace
-from urllib.parse import urlsplit
 
+import httpx
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from minio.credentials import Credentials
-from minio.signer import sign_v4_s3
-from starlette.requests import Request
 
 from app.application.services import dataset_s3 as s3
-from app.application.services.dataset_s3_files import byte_range, resolve_file
+from app.application.services.dataset_s3_files import resolve_file
 from app.domain.models.dataset import DataCenterDataset, DatasetFile, DatasetLocation, DatasetStorageType
 
 
-class MemoryRedis:
-    def __init__(self): self.values = {}
-    async def set(self, k, v, ex): self.values[k] = v
-    async def get(self, k): return self.values.get(k)
-
-
 @pytest.fixture
-def configured(monkeypatch):
-    settings = SimpleNamespace(server_host="https://example.test:7443/prefix/", dataset_managed_volume="datasets")
-    monkeypatch.setattr(s3, "get_settings", lambda: settings)
-    redis = MemoryRedis()
-    monkeypatch.setattr(s3, "get_redis", lambda: SimpleNamespace(client=redis))
-    return settings
+def settings(monkeypatch):
+    config = SimpleNamespace(s3_gateway_url='http://gateway:8080', s3_gateway_admin_key='test-admin',
+        s3_gateway_managed_root='managed', dataset_managed_volume='datasets', dataset_host_path_allowlist='/data,/mnt',
+        dataset_docker_host_root='', s3_gateway_root_mappings=json.dumps([{'host_path':'/data','root_id':'science'}]))
+    monkeypatch.setattr(s3, 'get_settings', lambda: config)
+    return config
 
 
-def request(url, method="GET", headers=None):
-    parsed = urlsplit(url)
-    # Reverse proxy strips the externally configured /prefix.
-    from urllib.parse import unquote
-    return Request({"type": "http", "method": method, "scheme": "http", "server": ("backend", 8000),
-                    "path": unquote(parsed.path.removeprefix("/prefix")), "query_string": parsed.query.encode(),
-                    "headers": [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()]})
+def test_gateway_root_mapping_and_allowlist(settings):
+    assert s3.gateway_mapping(('bind','/data/project','a.txt')) == ('science','project','a.txt')
+    assert s3.gateway_mapping(('volume','datasets','id/a.txt')) == ('managed','','id/a.txt')
+    for source in ['/etc', '/data/../etc', '/mnt/not-mapped', '/database']:
+        with pytest.raises(s3.S3Error): s3.gateway_mapping(('bind',source,'a.txt'))
 
 
-@pytest.mark.asyncio
-async def test_presigned_and_sdk_signatures_with_proxy_prefix_and_unicode(configured):
-    key = "目录/a +%名字.tif"
-    info = await s3.issue_credentials("dataset1", "owner", key)
-    bucket = s3.bucket_name("dataset1")
-    assert info["endpoint"] == "https://example.test:7443/prefix/api/v1/s3"
-    ticket = await s3.authenticate(request(info["download_url"]), bucket, key)
-    assert ticket["user_id"] == "owner"
-    for method in ("GET", "HEAD"):
-        from urllib.parse import quote
-        url = info["endpoint"] + "/" + bucket + "/" + quote(key, safe="/")
-        date = datetime.now(timezone.utc)
-        headers = {"Host": urlsplit(url).netloc, "X-Amz-Date": date.strftime("%Y%m%dT%H%M%SZ"), "X-Amz-Content-Sha256": hashlib.sha256(b"").hexdigest()}
-        headers = sign_v4_s3(method=method, url=urlsplit(url), region="us-east-1", headers=headers,
-                            credentials=Credentials(info["access_key_id"], info["secret_access_key"]),
-                            content_sha256=hashlib.sha256(b"").hexdigest(), date=date)
-        assert (await s3.authenticate(request(url, method, headers), bucket, key))["key"] == key
+def test_snap_host_paths(settings):
+    settings.dataset_docker_host_root = '/var/lib/snapd/hostfs'
+    assert s3.gateway_mapping(('bind','/var/lib/snapd/hostfs/data/project','a.txt')) == ('science','project','a.txt')
 
 
 @pytest.mark.asyncio
-async def test_scope_signature_expiry_and_write_denial(configured, monkeypatch):
-    info = await s3.issue_credentials("dataset1", "owner", "a.txt")
-    bucket = s3.bucket_name("dataset1")
-    for other_bucket, other_key in (("other", "a.txt"), (bucket, "b.txt")):
-        with pytest.raises(s3.S3Error):
-            await s3.authenticate(request(info["download_url"]), other_bucket, other_key)
-    with pytest.raises(s3.S3Error):
-        await s3.authenticate(request(info["download_url"] + "&X-Amz-Expires=900"), bucket, "a.txt")
-    with pytest.raises(s3.S3Error):
-        await s3.authenticate(request(info["download_url"], "HEAD"), bucket, "a.txt")
-    monkeypatch.setattr(s3.time, "time", lambda: info["expires_at"] + 1)
-    with pytest.raises(s3.S3Error):
-        await s3.authenticate(request(info["download_url"]), bucket, "a.txt")
-    from app.interfaces.api.dataset_s3_routes import router
-    app = FastAPI(); app.include_router(router, prefix="/api/v1")
-    client = TestClient(app)
-    for method in ("put", "post", "delete", "patch"):
-        response = getattr(client, method)("/api/v1/s3/bucket/key")
-        assert response.status_code == 403
-        assert "<Code>AccessDenied</Code>" in response.text
+async def test_adapter_only_sends_mapping_and_returns_public_contract(settings, monkeypatch):
+    calls = []
+    public = dict(s3_uri='s3://bucket/dir/a.txt',endpoint='https://files.test/s3',region='us-east-1',access_key_id='test',
+                  secret_access_key='secret',expires_at=123,download_url='https://files.test/s3/signed',filename='a.txt',size=5,relative_path='dir/a.txt')
+    def handle(request):
+        calls.append(json.loads(request.content))
+        assert request.headers['authorization'] == 'Bearer test-admin'
+        return httpx.Response(200, json={**public, 'internal_path':'/must-not-leak'} if request.method == 'POST' else {})
+    original = httpx.AsyncClient
+    monkeypatch.setattr(s3.httpx, 'AsyncClient', lambda **kw: original(transport=httpx.MockTransport(handle), **kw))
+    result = await s3.issue_credentials('dataset','user','dir/a.txt',('bind','/data/project','a.txt'))
+    assert result == public
+    assert calls[0] == {'root':'science','directory':'project'}
+    assert calls[1]['key'] == 'dir/a.txt' and calls[1]['source_key'] == 'a.txt'
+    assert '/data' not in json.dumps(calls)
 
 
-@pytest.mark.parametrize("header,size,expected", [(None, 10, (0, 10, 200)), ("bytes=2-5", 10, (2, 4, 206)), ("bytes=-3", 10, (7, 3, 206)), ("bytes=8-", 10, (8, 2, 206)), (None, 0, (0, 0, 200))])
-def test_ranges(header, size, expected):
-    assert byte_range(header, size) == expected
-
-
-@pytest.mark.parametrize("header", ["bytes=10-", "bytes=-0", "bytes=2-1", "bytes=1-2,4-5", "other=1-2"])
-def test_bad_ranges(header):
-    with pytest.raises(s3.S3Error): byte_range(header, 10)
+@pytest.mark.asyncio
+async def test_gateway_errors_do_not_leak_paths_or_secrets(settings, monkeypatch):
+    original = httpx.AsyncClient
+    monkeypatch.setattr(s3.httpx, 'AsyncClient', lambda **kw: original(transport=httpx.MockTransport(lambda r: httpx.Response(500,text='/private/path secret')), **kw))
+    with pytest.raises(s3.S3Error) as err:
+        await s3.issue_credentials('d','u','a',('bind','/data','a'))
+    assert '/private' not in err.value.message
 
 
 def test_mapping_does_not_expose_or_guess_host_paths():
-    dataset = DataCenterDataset(
-        dataset_id="d1", data_center_id="test", data_center_name="test", name="test", files=[DatasetFile(path="sources/loc/source/dir/a.txt")],
-        locations=[DatasetLocation(location_id="loc", node_id="local-default", storage_type=DatasetStorageType.HOST_PATH, source_path="/data/private/source", mount_name="source", verified=True)], metadata={}, nc_view_url=None,
-    )
     from app.infrastructure.external.sandbox.node_health import LOCAL_DEFAULT_NODE_ID
-    dataset.locations[0].node_id = LOCAL_DEFAULT_NODE_ID
-    assert resolve_file(dataset, "dir/a.txt") == ("bind", "/data/private/source", "dir/a.txt")
-    for bad in ("/data/private/source/dir/a.txt", "../a.txt", "dir/../a.txt", "dir//a.txt", "b.txt"):
+    dataset = DataCenterDataset(dataset_id='d1', data_center_id='test', data_center_name='test', name='test',
+        files=[DatasetFile(path='sources/loc/source/dir/a.txt')], locations=[DatasetLocation(location_id='loc',
+        node_id=LOCAL_DEFAULT_NODE_ID, storage_type=DatasetStorageType.HOST_PATH, source_path='/data/private/source',
+        mount_name='source', verified=True)], metadata={}, nc_view_url=None)
+    assert resolve_file(dataset, 'dir/a.txt') == ('bind','/data/private/source','dir/a.txt')
+    for bad in ['/data/private/source/dir/a.txt','../a.txt','dir/../a.txt','dir//a.txt','b.txt']:
         with pytest.raises(s3.S3Error): resolve_file(dataset, bad)
 
 
-def test_missing_public_endpoint_fails_closed(configured):
-    configured.server_host = None
-    with pytest.raises(s3.S3Error): s3.endpoint()
-
-
-def test_real_reader_rejects_symlinks_and_streams_exact_ranges(tmp_path):
-    import json
-    import subprocess
-    import sys
-    from app.application.services.dataset_s3_files import _READER
-    (tmp_path / "file").write_bytes(b"0123456789")
-    (tmp_path / "link").symlink_to(tmp_path / "file")
-    script = _READER.replace("'/dataset'", repr(str(tmp_path)))
-    def run(parts, *args):
-        return subprocess.run([sys.executable, "-c", script, json.dumps(parts), *args], capture_output=True, timeout=5)
-    meta = json.loads(run(["file"], "stat").stdout)
-    assert run(["file"], "read", "2", "4", meta["version"]).stdout == b"2345"
-    assert run(["link"], "stat").returncode != 0
-    assert run(["..", "file"], "stat").returncode != 0
-    assert run(["file"], "read", "0", "1", "stale-version").returncode != 0
+def test_backend_no_longer_hosts_s3_protocol():
+    from app.interfaces.api.dataset_s3_routes import router
+    assert [r.path for r in router.routes] == ['/datasets/{dataset_id}/files/s3-download']

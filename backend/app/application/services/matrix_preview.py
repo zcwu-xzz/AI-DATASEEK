@@ -90,6 +90,33 @@ def describe(entry):
     return {'preview_id': entry.preview_id, 'source_name': entry.source_name, 'arrays': result}
 
 
+def result_curves(entry):
+    """Read recognized numerical result arrays, never execute result contents."""
+    curves = []
+    labels = {'S': '奇异值谱', 'singular_values': '奇异值谱',
+              'residual_history': '迭代残差', 'eigenvalues': '特征值分布'}
+    for info in describe(entry)['arrays']:
+        if info['name'] not in labels or math.prod(info['shape']) > 4096:
+            continue
+        with _array(entry, info) as (array, reversed_axes):
+            values = np.array(array, copy=True).reshape(-1)
+        if not np.all(np.isfinite(values)):
+            continue
+        if info['name'] == 'eigenvalues':
+            curves.append({'title': labels[info['name']], 'kind': 'scatter',
+                           'x': values.real.tolist(), 'y': values.imag.tolist()})
+        else:
+            values = values.real.astype(float)
+            curves.append({'title': labels[info['name']], 'kind': 'line',
+                           'x': list(range(len(values))), 'y': values.tolist()})
+            if info['name'] in {'S', 'singular_values'}:
+                energy = np.cumsum(values * values)
+                if energy.size and energy[-1] > 0:
+                    curves.append({'title': '已保存奇异值的累计能量比例', 'kind': 'line',
+                                   'x': list(range(len(values))), 'y': (energy/energy[-1]).tolist()})
+    return curves
+
+
 @contextmanager
 def _array(entry, info):
     name = info['name']
@@ -123,7 +150,16 @@ def _array(entry, info):
             yield value.tocoo() if sparse.issparse(value) else value, False
 
 
-def render(entry, variable, axes, indices, component):
+def _bounded_range(start, end, size, label):
+    start = 0 if start is None else int(start)
+    end = size if end is None else int(end)
+    if start < 0 or end <= start or end > size:
+        raise MatrixPreviewError(f'{label}范围超出数组边界')
+    return start, end
+
+
+def render(entry, variable, axes, indices, component, row_range=None, column_range=None,
+           max_points=256, structure=False):
     arrays = describe(entry)['arrays']
     info = next((item for item in arrays if item['name'] == variable), None)
     if info is None:
@@ -134,32 +170,72 @@ def render(entry, variable, axes, indices, component):
         raise MatrixPreviewError('请选择两个不同的有效显示轴')
     if len(indices) != ndim or any(i < 0 or i >= n for i, n in zip(indices, shape)):
         raise MatrixPreviewError('切片索引超出范围')
+    if not 16 <= int(max_points) <= 512:
+        raise MatrixPreviewError('每轴显示点数应在 16 到 512 之间')
     selected = axes if ndim >= 2 else list(range(ndim))
-    slices = [slice(0, n, max(1, math.ceil(n / 256))) if a in selected else indices[a] for a, n in enumerate(shape)]
+    display_ranges = {}
+    if ndim >= 2:
+        display_ranges[axes[0]] = _bounded_range(*(row_range or [None, None]), shape[axes[0]], '行')
+        display_ranges[axes[1]] = _bounded_range(*(column_range or [None, None]), shape[axes[1]], '列')
+    elif ndim == 1:
+        display_ranges[0] = _bounded_range(*(column_range or [None, None]), shape[0], '列')
+    slices = []
+    for axis, size in enumerate(shape):
+        if axis in selected:
+            start, end = display_ranges[axis]
+            slices.append(slice(start, end, max(1, math.ceil((end - start) / int(max_points)))))
+        else:
+            slices.append(indices[axis])
     with _array(entry, info) as (array, reversed_axes):
         if sparse.issparse(array):
+            if ndim != 2 or axes != [0, 1]:
+                raise MatrixPreviewError('稀疏矩阵仅支持以轴 0、1 显示')
+            row_start, row_end = display_ranges[0]
+            col_start, col_end = display_ranges[1]
             row_step, col_step = slices[0].step, slices[1].step
-            mask = (array.row % row_step == 0) & (array.col % col_step == 0)
-            plane = np.zeros((math.ceil(shape[0] / row_step), math.ceil(shape[1] / col_step)), dtype=array.dtype)
-            np.add.at(plane, (array.row[mask] // row_step, array.col[mask] // col_step), array.data[mask])
+            matrix = array.tocsr()[row_start:row_end, col_start:col_end].tocoo()
+            mask = (matrix.row % row_step == 0) & (matrix.col % col_step == 0)
+            if structure:
+                # Bin all nonzero entries so overview never loses off-grid structure.
+                matrix.sum_duplicates()
+                mask = matrix.data != 0
+            plane = np.zeros((math.ceil((row_end-row_start) / row_step), math.ceil((col_end-col_start) / col_step)), dtype=array.dtype)
+            data = np.ones(np.count_nonzero(mask), dtype=float) if structure else matrix.data[mask]
+            np.add.at(plane, (matrix.row[mask] // row_step, matrix.col[mask] // col_step), data)
+            region_nnz = int(matrix.nnz)
         else:
             plane = np.asarray(array[tuple(slices[::-1] if reversed_axes else slices)])
             if reversed_axes:
                 plane = plane.transpose()
+            region_nnz = int(np.count_nonzero(plane))
         if ndim >= 2 and axes[0] > axes[1]:
             plane = plane.T
-        plane = {'magnitude': np.abs, 'real': np.real, 'imaginary': np.imag, 'phase': np.angle}[component](plane)
+        if structure:
+            plane = np.asarray(plane != 0, dtype=float)
+        else:
+            plane = {'magnitude': np.abs, 'real': np.real, 'imaginary': np.imag, 'phase': np.angle}[component](plane)
         # real/imag return views: detach before closing a memory-mapped source.
         plane = np.array(plane, dtype=float, copy=True)
     plane = plane.reshape(1, -1) if plane.ndim < 2 else plane
     finite = plane[np.isfinite(plane)]
     values = [[float(v) if np.isfinite(v) else None for v in row] for row in plane]
-    rows = list(range(0, shape[axes[0]], slices[axes[0]].step)) if ndim >= 2 else [0]
+    rows = list(range(slices[axes[0]].start, slices[axes[0]].stop, slices[axes[0]].step)) if ndim >= 2 else [0]
     cols_axis = axes[1] if ndim >= 2 else 0
-    cols = list(range(0, shape[cols_axis], slices[cols_axis].step)) if ndim else [0]
+    cols = list(range(slices[cols_axis].start, slices[cols_axis].stop, slices[cols_axis].step)) if ndim else [0]
+    row_profile = np.nanmean(np.where(np.isfinite(plane), plane, np.nan), axis=1)
+    column_profile = np.nanmean(np.where(np.isfinite(plane), plane, np.nan), axis=0)
     return {'values': values, 'rows': rows, 'columns': cols, 'shape': shape,
             'sampled': any(isinstance(s, slice) and s.step > 1 for s in slices),
+            'row_step': slices[axes[0]].step if ndim >= 2 else 1,
+            'column_step': slices[cols_axis].step if ndim else 1,
+            'row_range': list(display_ranges.get(axes[0], (0, 1))) if ndim >= 2 else [0, 1],
+            'column_range': list(display_ranges.get(cols_axis, (0, 1))) if ndim else [0, 1],
+            'structure': bool(structure), 'nonzero': region_nnz,
+            'finite_count': int(finite.size), 'count': int(plane.size),
             'minimum': float(finite.min()) if finite.size else None,
             'maximum': float(finite.max()) if finite.size else None,
             'mean': float(finite.mean()) if finite.size else None,
+            'standard_deviation': float(finite.std()) if finite.size else None,
+            'row_profile': [float(v) if np.isfinite(v) else None for v in row_profile],
+            'column_profile': [float(v) if np.isfinite(v) else None for v in column_profile],
             'non_finite': int(plane.size - finite.size)}

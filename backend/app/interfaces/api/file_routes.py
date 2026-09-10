@@ -29,7 +29,7 @@ from app.application.services.astronomy_preview import (
     render_plane as render_astronomy_plane,
 )
 from app.application.services.file_service import FileService
-from app.application.services.matrix_preview import MatrixPreviewError, matrix_preview_cache, describe as describe_matrix, render as render_matrix
+from app.application.services.matrix_preview import MatrixPreviewError, matrix_preview_cache, describe as describe_matrix, render as render_matrix, result_curves
 from app.application.errors.exceptions import NotFoundError
 from app.interfaces.dependencies import get_file_service, get_current_user, get_optional_current_user, verify_signature
 from app.domain.models.user import User
@@ -108,6 +108,10 @@ class MatrixRenderRequest(AlignmentPreviewReleaseRequest):
     axes: list[int] = Field(default_factory=lambda: [0, 1], max_length=2)
     indices: list[int] = Field(default_factory=list, max_length=16)
     component: str = Field(default='real', pattern='^(real|imaginary|magnitude|phase)$')
+    row_range: list[int] | None = Field(default=None, min_length=2, max_length=2)
+    column_range: list[int] | None = Field(default=None, min_length=2, max_length=2)
+    max_points: int = Field(default=256, ge=16, le=512)
+    structure: bool = False
 
 
 @router.post('/matrix-preview/prepare')
@@ -121,7 +125,9 @@ async def prepare_matrix_preview(
     try:
         entry = await run_in_threadpool(matrix_preview_cache.create, current_user.id, request.file_id,
                                        public_filename(file_info.filename), stream, declared_size=file_info.size)
-        return APIResponse.success(await run_in_threadpool(describe_matrix, entry))
+        payload = await run_in_threadpool(describe_matrix, entry)
+        payload['curves'] = await run_in_threadpool(result_curves, entry)
+        return APIResponse.success(payload)
     except Exception as exc:
         if entry:
             matrix_preview_cache.delete(entry.preview_id, current_user.id, request.file_id)
@@ -137,7 +143,9 @@ async def render_matrix_preview(request: MatrixRenderRequest, current_user: User
     try:
         entry = matrix_preview_cache.get(request.preview_id, current_user.id, request.file_id)
         return APIResponse.success(await run_in_threadpool(render_matrix, entry, request.variable,
-                                                           request.axes, request.indices, request.component))
+                                                           request.axes, request.indices, request.component,
+                                                           request.row_range, request.column_range,
+                                                           request.max_points, request.structure))
     except Exception as exc:
         logger.warning('Matrix preview rendering failed: %s', type(exc).__name__)
         message = str(exc) if isinstance(exc, (MatrixPreviewError, AstronomyPreviewError)) else '矩阵切片读取失败'

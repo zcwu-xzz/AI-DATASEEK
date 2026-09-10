@@ -4,16 +4,26 @@ import type { ApiResponse } from './client.ts';
 import type { SignedUrlResponse } from '../types/response.ts';
 
 export interface MatrixArrayInfo { name: string; shape: number[]; dtype: string; sparse: boolean }
-export interface MatrixPreparation { preview_id: string; source_name: string; arrays: MatrixArrayInfo[] }
+export interface MatrixPreparation { preview_id: string; source_name: string; arrays: MatrixArrayInfo[]; curves?: {title: string; kind: string; x: number[]; y: number[]}[] }
 export interface MatrixPlane {
   values: (number | null)[][]; rows: number[]; columns: number[]; shape: number[];
   sampled: boolean; minimum: number | null; maximum: number | null; mean: number | null; non_finite: number;
+  standard_deviation: number | null; finite_count: number; count: number; nonzero: number; structure: boolean;
+  row_step: number; column_step: number; row_range: number[]; column_range: number[];
+  row_profile: (number | null)[]; column_profile: (number | null)[];
 }
 export async function prepareMatrixPreview(fileId: string): Promise<MatrixPreparation> {
   return (await apiClient.post<ApiResponse<MatrixPreparation>>('/files/matrix-preview/prepare', { file_id: fileId })).data.data;
 }
-export async function renderMatrixPreview(fileId: string, previewId: string, variable: string, axes: number[], indices: number[], component: string): Promise<MatrixPlane> {
-  return (await apiClient.post<ApiResponse<MatrixPlane>>('/files/matrix-preview/render', { file_id: fileId, preview_id: previewId, variable, axes, indices, component })).data.data;
+export interface MatrixRenderOptions {
+  rowRange?: number[]; columnRange?: number[]; maxPoints?: number; structure?: boolean;
+}
+export async function renderMatrixPreview(fileId: string, previewId: string, variable: string, axes: number[], indices: number[], component: string, options: MatrixRenderOptions = {}): Promise<MatrixPlane> {
+  return (await apiClient.post<ApiResponse<MatrixPlane>>('/files/matrix-preview/render', {
+    file_id: fileId, preview_id: previewId, variable, axes, indices, component,
+    row_range: options.rowRange, column_range: options.columnRange,
+    max_points: options.maxPoints ?? 256, structure: options.structure ?? false,
+  })).data.data;
 }
 export async function releaseMatrixPreview(fileId: string, previewId: string): Promise<void> {
   await apiClient.post('/files/matrix-preview/release', { file_id: fileId, preview_id: previewId });

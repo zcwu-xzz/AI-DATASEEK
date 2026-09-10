@@ -60,6 +60,37 @@ services:
     networks:
       - ai-dataseek-network
 
+  # Optional independent service. Enable with ./run.sh --profile s3 ...
+  # Its complete build context can be copied and deployed without DataSeek.
+  filesystem-s3:
+    profiles: [s3]
+    image: ${S3_GATEWAY_IMAGE:-filesystem-s3:0.1.0}
+    build:
+      context: ./filesystem-s3
+      args:
+        PYTHON_IMAGE: ${S3_GATEWAY_PYTHON_IMAGE:-python:3.12-slim}
+    environment:
+      FS3_PUBLIC_URL: ${S3_GATEWAY_PUBLIC_URL:-${SERVER_HOST:-http://localhost:7000}/api/v1/s3}
+      FS3_ADMIN_KEY: ${S3_GATEWAY_ADMIN_KEY:-}
+      FS3_ROOTS: '{"managed":"/roots/managed","local":"/roots/local"}'
+      FS3_STATE_PATH: /state/gateway.sqlite3
+    volumes:
+      - dataset-data:/roots/managed:ro
+      - type: bind
+        source: ${S3_GATEWAY_HOST_DIRECTORY:-/data}
+        target: /roots/local
+        read_only: true
+        bind:
+          create_host_path: false
+      - s3-gateway-state:/state
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp]
+    restart: unless-stopped
+    networks:
+      - ai-dataseek-network
+
   # This one-shot service makes the sandbox image available to the backend.
   # Analysis sandboxes themselves are created dynamically per session.
   sandbox-image:
@@ -111,6 +142,8 @@ services:
       - ai-dataseek-network
 
 volumes:
+  s3-gateway-state:
+    name: ai-dataseek-s3-gateway-state
   mongodb-data:
     name: ai-dataseek-mongodb-data
   minio-data:

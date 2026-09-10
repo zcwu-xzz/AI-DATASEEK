@@ -73,11 +73,6 @@ class SSOAuthorizationMiddleware(BaseHTTPMiddleware):
         if not request.url.path.startswith("/api/v1") or request.method == "OPTIONS":
             return await call_next(request)
 
-        # This read-only protocol endpoint authenticates EVERY request with
-        # scoped, expiring AWS SigV4 credentials instead of a browser SSO token.
-        if request.url.path == "/api/v1/s3" or request.url.path.startswith("/api/v1/s3/"):
-            return await call_next(request)
-
         # The data-center submission contract carries its SSO token in the
         # validated JSON body. Its route performs the SSO lookup after FastAPI
         # parses that body; requiring an Authorization header here would reject

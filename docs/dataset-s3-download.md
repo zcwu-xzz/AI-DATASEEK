@@ -1,24 +1,46 @@
-# 数据集 S3 只读下载
+# DataSeek 接入独立文件系统 S3 网关
 
-左侧数据集文件行的下载按钮打开 S3 下载弹窗。弹窗展示 S3 URI、Endpoint、文件大小和有效期，同时提供浏览器下载以及 S3 客户端临时凭证。地址由 `SERVER_HOST` 生成，保留其路径前缀，不使用请求 Host 或固定域名。
+S3 协议能力已移至独立项目 [`filesystem-s3`](../filesystem-s3/README.md)。DataSeek 不再处理 S3 签名、文件流、分页或临时凭证存储，不再为下载启动沙箱容器。
 
-Endpoint 为 `{SERVER_HOST}/api/v1/s3`。外部反向代理须将其转发到 DataSeek 的同名 API 路由；如果 SERVER_HOST 包含代理前缀，代理移除该前缀即可。无需新增端口或对象存储服务。
+DataSeek 保留 `/api/v1/datasets/{id}/files/s3-download` 作为集成接口：检查数据集与公开文件路径，将已经验证的源位置映射为网关目录别名，再通过管理 API 签发 15 分钟单文件凭证。返回字段保持不变，下载按钮按当前产品要求继续隐藏。
 
-## 数据与凭证
+## 配置
 
-数据留在原目录；读取时通过现有 Docker 节点将目录只读挂载，以固定大小的数据块返回，不上传到对象存储、不生成完整文件副本。路径仍须通过 `DATASET_HOST_PATH_ALLOWLIST` 和宿主机真实路径校验，读取时拒绝软链接、非普通文件与路径越界。当前支持本地默认执行节点和托管数据卷；其他节点明确返回不可用。
+现有 `.env` 增加以下配置（不要将管理密钥提交到代码库）：
 
-每次准备下载签发有效期为 15 分钟的临时 Access Key/Secret Key，Redis 保存访问范围和过期时间。权限只覆盖选中的文件；即使同一数据集中的其他文件也不能通过该凭证读取。每次读取重新检查数据集是否可用。凭证仅保存在弹窗内存，不写入浏览器持久化存储。关闭弹窗不会撤销已经复制的凭证，凭证到期后失效。
+```dotenv
+S3_GATEWAY_URL=http://filesystem-s3:8080
+S3_GATEWAY_ADMIN_KEY=填写至少32字符的随机密钥
+S3_GATEWAY_HOST_DIRECTORY=/data
+S3_GATEWAY_ROOT_MAPPINGS=[{"host_path":"/data","root_id":"local"}]
+S3_GATEWAY_MANAGED_ROOT=managed
+```
 
-S3 客户端配置 Path Style、`us-east-1` 区域、自定义 Endpoint 和弹窗中的凭证。以 AWS CLI 为例，使用 `aws configure --profile dataseek` 配置临时凭证，再执行弹窗提供的命令。凭证过期后重新生成并更新 profile。
+`S3_GATEWAY_HOST_DIRECTORY` 是要只读挂载的宿主机目录；必须存在并属于 `DATASET_HOST_PATH_ALLOWLIST`。
+`S3_GATEWAY_ROOT_MAPPINGS` 把 DataSeek 已验证的宿主机目录映射到网关的 root 别名。
+默认 Compose 同时只读挂载 DataSeek 托管数据卷为 `managed`。独立网关不认识 DataSeek 的数据集 ID、用户系统或宿主机路径表示，目录别名是双方的契约。
 
-## 支持边界
+同一栈默认公开 Endpoint 根据 `.env` 的 `SERVER_HOST` 生成：`{SERVER_HOST}/api/v1/s3`，没有固定域名。
+如使用外部独立部署的网关，设置 `S3_GATEWAY_URL` 为其管理地址，网关自身设置 `FS3_PUBLIC_URL`；还可通过 `S3_GATEWAY_PUBLIC_URL` 覆盖同栈公开 Endpoint。
+Nginx 将旧 `/api/v1/s3` 入口直接代理到独立网关 `/s3`，保留中文文件名的编码和签名查询参数；不会经过 Backend 或 SSO 中间件。
+管理 API 不通过 DataSeek 的 Nginx 公开。
 
-- AWS Signature Version 4 请求头签名及查询参数预签名。
-- GetObject、HeadObject、单段 HTTP Range、If-Match、If-None-Match。
-- ListBuckets、HeadBucket、GetBucketLocation、ListObjectsV2；只列出当前凭证授权的文件和父前缀。
-- 所有写入、删除操作均拒绝；对象版本、多段上传、对象 ACL 等不支持，返回 S3 XML 错误。
-- ETag 是文件身份、长度及修改时间组成的版本标记，不是 MD5 校验和。
-- 网关下载占用宿主机磁盘读取和网络带宽。只读辅助容器在下载结束时删除，并设有最长运行时间；不启动分析 Agent。
+## 启用
 
-已有成果物对象存储配置与此功能独立；该下载流程不调用它。
+仍然只使用项目现有 `docker-compose.yml` 和 `./run.sh`：
+
+```bash
+./run.sh --profile s3 build filesystem-s3 backend frontend
+./run.sh --profile s3 up -d --no-deps filesystem-s3 backend frontend
+./run.sh --profile s3 ps
+```
+
+网关是可选的 `s3` profile，不占用新增的前端端口。未启用或未配置管理密钥时，S3 准备接口明确返回不可用，不退回旧的内置实现。
+镜像中的服务使用 UID/GID 10001，需授予其源目录只读/遍历权限。不要通过挂载整个宿主机或 Docker Socket 来解决目录权限问题。
+如需多组宿主机目录，在同一 Compose 服务显式添加只读挂载，并扩充 `FS3_ROOTS` 和 DataSeek root mappings。
+
+## 迁移注意
+
+旧版 Redis 中签发的 S3 凭证不会迁移到独立网关，切换后需要重新申请；旧凭证本身也只有 15 分钟有效期。
+网关在签发和读取时验证实际文件，但不再回调 DataSeek 查询数据集状态。数据集撤销访问时，应调用管理 API 删除对应 Bucket 或撤销凭证；未主动撤销的临时凭证在有效期内仍然有效。
+源目录保持只读，文件不搬迁；新增状态卷 `ai-dataseek-s3-gateway-state` 仅存映射和临时授权。

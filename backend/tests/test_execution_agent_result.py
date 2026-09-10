@@ -518,6 +518,59 @@ def test_shell_summary_validation_rejects_sensitive_values_paths_and_attachments
     assert agent._tool_free_completion_is_valid(invented_attachment) is False
 
 
+@pytest.mark.parametrize('wrapper', ['json', 'fenced_json', 'markdown'])
+def test_plugin_answer_preserves_markdown_and_backend_attachments(wrapper):
+    agent = object.__new__(ExecutionAgent)
+    agent._terminal_completion_kind = 'plugin'
+    agent._terminal_plugin_attachments = ['/home/ubuntu/output/result.npz']
+    text = '计算已完成。\n\n| 指标 | 数值 |\n| --- | --- |\n| 残差 | 5e-16 |\n\n```python\nprint(1)\n```'
+    raw = json.dumps({'success': True, 'result': text, 'attachments': ['result.npz', '/home/ubuntu/output/invented.npy']})
+    if wrapper == 'fenced_json': raw = '```json\n' + raw + '\n```'
+    if wrapper == 'markdown': raw = text
+    message = AIMessage(content=raw)
+    assert agent._tool_free_completion_is_valid(message)
+    result = ExecutionResult.model_validate_json(message.content)
+    assert result.result == text
+    assert result.attachments == agent._terminal_plugin_attachments
+
+
+def test_plugin_answer_logs_rejection_and_does_not_accept_internal_paths(caplog):
+    agent = object.__new__(ExecutionAgent)
+    agent._terminal_completion_kind = 'plugin'
+    agent._terminal_plugin_attachments = []
+    message = AIMessage(content=json.dumps({'success': True, 'result': '数据位于 /home/ubuntu/private.csv', 'attachments': []}))
+    assert not agent._tool_free_completion_is_valid(message)
+    assert 'reason=internal_path_in_answer' in caplog.text
+    assert '/home/ubuntu/private.csv' not in caplog.text
+
+
+def test_output_file_memory_survives_context_reset_without_other_paths():
+    agent = object.__new__(ExecutionAgent)
+    agent.memory = Memory()
+    event = ToolEvent(status=ToolStatus.CALLED, tool_call_id='ok', tool_name='plugin',
+                      function_name='math_matrix_pseudoinverse',
+                      function_args={'input_path': '/home/ubuntu/output/matrix.npy',
+                                     'output_path': '/home/ubuntu/output/inverse.npz',
+                                     'other_input_path': '/root/private.npy'},
+                      function_result=ToolResult(success=True))
+    agent._remember_output_paths(event)
+    restored = Memory.model_validate_json(agent.memory.model_dump_json())
+    restored.reset_context(SystemMessage(content='system'))
+    agent.memory = restored
+    assert restored.known_output_paths == ['/home/ubuntu/output/matrix.npy', '/home/ubuntu/output/inverse.npz']
+    assert 'use its known path directly' in agent._known_output_context()
+
+
+def test_numeric_fallback_is_readable_and_explicit():
+    from app.domain.utils.tool_result_summary import summarize_tool_metrics
+    result = summarize_tool_metrics({'success': True, 'condition_before': 14.994411910131642,
+                                    'condition_after': 13.678711593553436, 'row_scale': [1.1, 1.2],
+                                    'output_path': '/home/ubuntu/output/result.npy'})
+    assert '| 均衡前条件数 | 14.9944 |' in result
+    assert '自动解读暂未完成' in result
+    assert '/home/' not in result
+
+
 @pytest.mark.asyncio
 async def test_stdout_summary_timeout_returns_local_summary_without_error():
     agent = object.__new__(ExecutionAgent)

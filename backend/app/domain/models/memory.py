@@ -1,6 +1,6 @@
 import logging
 import json
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from app.domain.models.tool_result import ToolResult
 from langchain.messages import AnyMessage
@@ -12,6 +12,7 @@ class Memory(BaseModel):
     Memory class, defining the basic behavior of memory
     """
     messages: List[AnyMessage] = []
+    known_output_paths: List[str] = Field(default_factory=list, max_length=32)
 
     def add_message(self, message: AnyMessage) -> None:
         """Add message to memory"""

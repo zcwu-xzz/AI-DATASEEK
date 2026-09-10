@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from scipy import io as sio, sparse
 
-from app.application.services.matrix_preview import describe, render, matrix_preview_cache
+from app.application.services.matrix_preview import describe, render, matrix_preview_cache, result_curves
 from app.application.services.astronomy_preview import AstronomyPreviewError
 
 
@@ -77,6 +77,43 @@ def test_nonfinite_complex_and_invalid_axes(prepare):
 def test_object_array_rejected(prepare):
     entry = prepare('object.npy', lambda path: np.save(path, np.array([{'a': 1}], dtype=object)))
     with pytest.raises(ValueError, match='对象'): describe(entry)
+
+
+def test_original_resolution_region_profiles(prepare):
+    value = np.arange(600 * 700).reshape(600, 700)
+    entry = prepare('region.npy', lambda path: np.save(path, value))
+    result = render(entry, 'array', [0, 1], [0, 0], 'real', [301, 310], [451, 460])
+    expected = value[301:310, 451:460]
+    np.testing.assert_array_equal(result['values'], expected)
+    np.testing.assert_allclose(result['row_profile'], expected.mean(axis=1))
+    np.testing.assert_allclose(result['column_profile'], expected.mean(axis=0))
+    assert result['rows'] == list(range(301, 310))
+    assert not result['sampled']
+    assert result['standard_deviation'] == expected.std()
+    with pytest.raises(ValueError):
+        render(entry, 'array', [0, 1], [0, 0], 'real', [0, 601])
+
+
+def test_sparse_region_structure(prepare):
+    matrix = sparse.coo_matrix(([7., -4.], ([301, 309], [451, 459])), shape=(10000, 10000))
+    entry = prepare('structure.npz', lambda path: sparse.save_npz(path, matrix))
+    result = render(entry, 'matrix', [0, 1], [0, 0], 'real', [301, 310], [451, 460], structure=True)
+    assert result['values'][0][0] == 1
+    assert result['values'][8][8] == 1
+    assert result['nonzero'] == 2
+    overview = render(entry, 'matrix', [0, 1], [0, 0], 'real', structure=True)
+    assert sum(sum(row) for row in overview['values']) > 0
+
+
+def test_mathematics_result_curves(prepare):
+    entry = prepare('result.npz', lambda path: np.savez(path, S=np.array([4., 3.]),
+                    eigenvalues=np.array([1+2j, 1-2j]), residual_history=np.array([1., .1, .001])))
+    curves = result_curves(entry)
+    assert len(curves) == 4
+    energy = next(c for c in curves if '累计能量' in c['title'])
+    np.testing.assert_allclose(energy['y'], [.64, 1.])
+    eigen = next(c for c in curves if c['kind'] == 'scatter')
+    assert eigen['y'] == [2., -2.]
 
 
 @pytest.mark.parametrize('value', [np.array(42), np.arange(6), np.empty((0, 3))])

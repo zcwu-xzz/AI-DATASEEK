@@ -113,12 +113,20 @@ def load_array(path_value: str, variable: str | None = None):
             value = np.load(path, allow_pickle=False, mmap_mode="r")
             return value, variable or "array", [variable or "array"]
         if suffix == ".npz":
-            archive = np.load(path, allow_pickle=False)
-            return _select({k: archive[k] for k in archive.files}, variable, "NPZ")
+            with np.load(path, allow_pickle=False) as archive:
+                if {'format', 'shape', 'data'}.issubset(archive.files):
+                    matrix = sparse.load_npz(path)
+                    return matrix, 'matrix', ['matrix']
+                value, name, names = _select({k: archive[k] for k in archive.files if variable is None or k == variable}, variable, "NPZ")
+                return value, name, sorted(k for k in archive.files if not k.startswith('__'))
         if suffix == ".mtx":
             value = scipy_io.mmread(path)
             return value, variable or "matrix", [variable or "matrix"]
         if suffix == ".mat":
+            import h5py
+            if h5py.is_hdf5(path):
+                from advanced import load_mat73
+                return load_mat73(path, variable)
             return _select(scipy_io.loadmat(path), variable, "MAT")
         if suffix in {".h5", ".hdf5", ".hdf"}:
             import h5py
@@ -181,21 +189,21 @@ def save_array(path_value: str, value, variable="array", extras: dict | None = N
     variable = "".join(c if c.isalnum() or c == "_" else "_" for c in str(variable)).strip("_") or "array"
     try:
         if suffix == ".npy":
-            np.save(path, value.toarray() if sparse.issparse(value) else value, allow_pickle=False)
+            np.save(path, dense(value, 'NPY 导出') if sparse.issparse(value) else value, allow_pickle=False)
         elif suffix == ".npz":
             if sparse.issparse(value) and not extras:
                 sparse.save_npz(path, value)
             else:
-                payload = {variable: value.toarray() if sparse.issparse(value) else value, **extras}
+                payload = {variable: dense(value, 'NPZ 导出') if sparse.issparse(value) else value, **extras}
                 np.savez_compressed(path, **payload)
         elif suffix == ".mtx":
             scipy_io.mmwrite(path, value)
         elif suffix == ".mat":
-            scipy_io.savemat(path, {variable: value.toarray() if sparse.issparse(value) else value, **extras})
+            scipy_io.savemat(path, {variable: value, **extras})
         elif suffix in {".h5", ".hdf5", ".hdf"}:
             import h5py
             with h5py.File(path, "w") as handle:
-                handle.create_dataset(variable, data=value.toarray() if sparse.issparse(value) else value)
+                handle.create_dataset(variable, data=dense(value, 'HDF5 导出') if sparse.issparse(value) else value)
                 for name, item in extras.items():
                     handle.create_dataset(name, data=item)
         elif suffix in {".csv", ".tsv", ".txt"}:
@@ -260,6 +268,10 @@ def main() -> None:
         encoded = sys.argv[2] + "=" * (-len(sys.argv[2]) % 4)
         args = json.loads(base64.urlsafe_b64decode(encoded).decode())
     except Exception: fail("参数编码无效")
+
+    from advanced import TOOL_NAMES, execute
+    if op in TOOL_NAMES:
+        emit(execute(op, args)); return
 
     if op == "math_array_inspect": emit(inspect_tool(args)); return
     if op == "math_array_validate": emit(validate_tool(args)); return
@@ -396,7 +408,7 @@ def main() -> None:
         if op == "math_tensor_statistics":
             axes=[]
             for axis in range(a.ndim):
-                reduced=np.linalg.norm(a,axis=tuple(i for i in range(a.ndim) if i!=axis)) if a.ndim>1 else np.abs(a)
+                reduced=np.sqrt(np.sum(np.abs(a)**2,axis=tuple(i for i in range(a.ndim) if i!=axis))) if a.ndim>1 else np.abs(a)
                 axes.append({"axis":axis,"size":a.shape[axis],"norm_min":float(np.min(reduced)),"norm_max":float(np.max(reduced)),"norm_mean":float(np.mean(reduced))})
             emit({"shape":list(a.shape),"ndim":a.ndim,"statistics":numeric_summary(a),"axis_summaries":axes}); return
         require_finite(a,"张量运算")

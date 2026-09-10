@@ -1,125 +1,67 @@
-"""Read-only S3 signing and file addressing; no object copies are created."""
-from __future__ import annotations
-
+"""DataSeek adapter for the standalone filesystem S3 gateway management API."""
 import hashlib
-import hmac
 import json
-import secrets
-import time
-from datetime import datetime, timezone
-from urllib.parse import quote, urlsplit, urlencode
+from pathlib import PurePosixPath
+from urllib.parse import urlsplit
 
-from fastapi import Request
+import httpx
 
 from app.core.config import get_settings
-from app.infrastructure.storage.redis import get_redis
-
-TTL = 900
-REGION = "us-east-1"
+from app.infrastructure.external.sandbox.dataset_mount_validator import docker_host_source_and_candidates
 
 
 class S3Error(Exception):
-    def __init__(self, code="AccessDenied", message="Access denied", status=403):
+    def __init__(self, code='ServiceUnavailable', message='S3 gateway is unavailable', status=503):
         self.code, self.message, self.status = code, message, status
 
 
-def endpoint() -> str:
-    base = (get_settings().server_host or "").rstrip("/")
-    parsed = urlsplit(base)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.query or parsed.fragment or parsed.username:
-        raise S3Error("InvalidConfiguration", "SERVER_HOST must be an HTTP(S) public base URL", 503)
-    return base + "/api/v1/s3"
-
-
-def bucket_name(dataset_id: str) -> str:
-    return "ds-" + hashlib.sha256(dataset_id.encode()).hexdigest()[:32]
-
-
-def signing_key(secret: str, date: str, region: str) -> bytes:
-    key = ("AWS4" + secret).encode()
-    for part in (date, region, "s3", "aws4_request"):
-        key = hmac.new(key, part.encode(), hashlib.sha256).digest()
-    return key
-
-
-def signature(method, path, query, headers, signed_headers, payload, secret, scope, stamp):
-    canonical_query = "&".join(f"{quote(k, safe='-_.~')}={quote(v, safe='-_.~')}" for k, v in sorted(query))
-    canonical_headers = "".join(f"{name}:{' '.join(headers[name].split())}\n" for name in signed_headers.split(";"))
-    canonical = "\n".join((method, quote(path, safe="/-_.~"), canonical_query, canonical_headers, signed_headers, payload))
-    to_sign = "\n".join(("AWS4-HMAC-SHA256", stamp, scope, hashlib.sha256(canonical.encode()).hexdigest()))
-    date, region, _, _ = scope.split("/")
-    return hmac.new(signing_key(secret, date, region), to_sign.encode(), hashlib.sha256).hexdigest()
-
-
-async def issue_credentials(dataset_id: str, user_id: str, key: str):
-    base = endpoint()
-    access = "DS" + secrets.token_hex(12).upper()
-    secret = secrets.token_urlsafe(32)
-    expires = int(time.time()) + TTL
-    bucket = bucket_name(dataset_id)
-    # Credentials are scoped to the selected file, not every dataset of a user.
-    record = dict(dataset_id=dataset_id, user_id=user_id, key=key, secret=secret, expires=expires, bucket=bucket)
-    await get_redis().client.set("dataset-s3:" + access, json.dumps(record), ex=TTL)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    scope = f"{stamp[:8]}/{REGION}/s3/aws4_request"
-    url = base + "/" + bucket + "/" + quote(key, safe="/-_.~")
-    query = [("X-Amz-Algorithm", "AWS4-HMAC-SHA256"), ("X-Amz-Credential", access + "/" + scope),
-             ("X-Amz-Date", stamp), ("X-Amz-Expires", str(TTL)), ("X-Amz-SignedHeaders", "host")]
-    sig = signature("GET", urlsplit(base).path + "/" + bucket + "/" + key, query,
-                    {"host": urlsplit(base).netloc}, "host", "UNSIGNED-PAYLOAD", secret, scope, stamp)
-    return dict(s3_uri=f"s3://{bucket}/{key}", endpoint=base, region=REGION, access_key_id=access,
-                secret_access_key=secret, expires_at=expires, download_url=url + "?" + urlencode(query) + "&X-Amz-Signature=" + sig)
-
-
-async def authenticate(request: Request, bucket: str | None, key: str | None):
+def gateway_mapping(target):
+    """Map verified dataset sources to explicit gateway root aliases, never browser paths."""
+    settings = get_settings()
+    kind, source, relative = target
+    if kind == 'volume':
+        if source != settings.dataset_managed_volume:
+            raise S3Error(message='Managed dataset volume is not configured for S3')
+        return settings.s3_gateway_managed_root, '', relative
+    if kind != 'bind': raise S3Error(message='Unsupported dataset source')
+    candidate, allowed = docker_host_source_and_candidates(source, settings.dataset_host_path_allowlist, settings.dataset_docker_host_root)
+    if not allowed: raise S3Error(message='Dataset source is outside the configured allowlist', status=403)
     try:
-        pairs = list(request.query_params.multi_items())
-        if len(pairs) != len(dict(pairs)):
-            raise ValueError("duplicate query")
-        q = dict(pairs)
-        presigned = "X-Amz-Algorithm" in q
-        if presigned:
-            if q["X-Amz-Algorithm"] != "AWS4-HMAC-SHA256":
-                raise ValueError("algorithm")
-            credential, signed, supplied, stamp = q["X-Amz-Credential"], q["X-Amz-SignedHeaders"], q["X-Amz-Signature"], q["X-Amz-Date"]
-            pairs = [(k, v) for k, v in pairs if k != "X-Amz-Signature"]
-            duration = int(q["X-Amz-Expires"])
-            if not 0 < duration <= TTL:
-                raise ValueError("expiry")
-        else:
-            auth = request.headers.get("authorization", "")
-            if not auth.startswith("AWS4-HMAC-SHA256 "):
-                raise ValueError("algorithm")
-            fields = dict(part.strip().split("=", 1) for part in auth.split(" ", 1)[1].split(","))
-            credential, signed, supplied = fields["Credential"], fields["SignedHeaders"], fields["Signature"]
-            stamp, duration = request.headers["x-amz-date"], 300
-        access, scope = credential.split("/", 1)
-        date, region, service, terminator = scope.split("/")
-        if service != "s3" or terminator != "aws4_request" or date != stamp[:8]:
-            raise ValueError("scope")
-        names = signed.split(";")
-        if "host" not in names or names != sorted(set(names)) or any(n != n.lower() for n in names):
-            raise ValueError("headers")
-        then = datetime.strptime(stamp, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc).timestamp()
-        if then > time.time() + 60 or time.time() > then + duration:
-            raise ValueError("expired")
-        raw = await get_redis().client.get("dataset-s3:" + access)
-        if not raw:
-            raise ValueError("credentials")
-        record = json.loads(raw)
-        if record["expires"] <= time.time() or (bucket is not None and bucket != record["bucket"]) or (key is not None and key != record["key"]):
-            raise ValueError("scope")
-        base = urlsplit(endpoint())
-        # Use the configured PUBLIC path and host so proxy prefix stripping does
-        # not break signatures. Never trust forwarded host headers for signing.
-        suffix = request.url.path.split("/api/v1/s3", 1)[1]
-        path = base.path + suffix
-        headers = dict(request.headers)
-        headers["host"] = base.netloc
-        payload = "UNSIGNED-PAYLOAD" if presigned else headers.get("x-amz-content-sha256", hashlib.sha256(b"").hexdigest())
-        expected = signature(request.method, path, pairs, headers, signed, payload, record["secret"], scope, stamp)
-        if not hmac.compare_digest(supplied, expected):
-            raise ValueError("signature")
-        return record
-    except (ValueError, KeyError, TypeError):
-        raise S3Error() from None
+        mappings = json.loads(settings.s3_gateway_root_mappings)
+        candidates = []
+        for mapping in mappings:
+            root_path, root_allowed = docker_host_source_and_candidates(mapping['host_path'], settings.dataset_host_path_allowlist, settings.dataset_docker_host_root)
+            if not root_allowed: continue
+            path = PurePosixPath(candidate)
+            base = PurePosixPath(root_path)
+            if path == base or base in path.parents:
+                suffix = str(path.relative_to(base))
+                candidates.append((len(base.parts), mapping['root_id'], '' if suffix == '.' else suffix))
+        if not candidates: raise ValueError()
+        _, root_id, directory = max(candidates)
+        return root_id, directory, relative
+    except (ValueError, TypeError, KeyError):
+        raise S3Error(message='No S3 gateway root mapping is configured for this dataset') from None
+
+
+async def issue_credentials(dataset_id: str, user_id: str, key: str, target):
+    settings = get_settings()
+    internal = settings.s3_gateway_url.rstrip('/')
+    url = urlsplit(internal)
+    if url.scheme not in {'http', 'https'} or not url.netloc or not settings.s3_gateway_admin_key:
+        raise S3Error(message='Independent S3 gateway is not configured')
+    root_id, directory, source_key = gateway_mapping(target)
+    identity = json.dumps([dataset_id, root_id, directory], ensure_ascii=True)
+    bucket = 'ds-' + hashlib.sha256(identity.encode()).hexdigest()[:32]
+    headers = {'Authorization': 'Bearer ' + settings.s3_gateway_admin_key}
+    try:
+        async with httpx.AsyncClient(base_url=internal + '/', headers=headers, timeout=30, follow_redirects=False) as client:
+            registration = await client.put('admin/v1/buckets/' + bucket, json={'root': root_id, 'directory': directory})
+            registration.raise_for_status()
+            response = await client.post('admin/v1/credentials', json={'bucket': bucket, 'key': key, 'source_key': source_key, 'ttl_seconds': 900})
+            response.raise_for_status()
+            result = response.json()
+        fields = {'s3_uri', 'endpoint', 'region', 'access_key_id', 'secret_access_key', 'expires_at', 'download_url', 'filename', 'size', 'relative_path'}
+        return {name: result[name] for name in fields}
+    except (httpx.HTTPError, ValueError, KeyError):
+        raise S3Error(message='The independent S3 gateway could not prepare this file') from None

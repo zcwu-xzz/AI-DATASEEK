@@ -27,7 +27,9 @@ def test_builtin_plugins_discover_scientific_and_geoscience_tools():
     )
 
     names = _tool_names(toolkit)
-    assert len(names) == 469
+    assert len(names) == 509
+    assert 'math_tensor_cp' in names
+    assert 'math_sparse_iterative_solve' in names
     assert "scientific_inspect" in names
     assert "math_array_inspect" in names
     assert "math_vector_statistics" in names

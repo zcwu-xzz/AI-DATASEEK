@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     # Optional root that exposes the machine filesystem inside the Docker
     # daemon's mount namespace (Snap Docker uses /var/lib/snapd/hostfs).
     dataset_docker_host_root: str = ""
+    # Independent read-only filesystem S3 gateway; mappings remain server-side.
+    s3_gateway_url: str = "http://filesystem-s3:8080"
+    s3_gateway_admin_key: str = ""
+    s3_gateway_managed_root: str = "managed"
+    s3_gateway_root_mappings: str = "[]"
 
     # Data-center SSO and analysis-tool usage reporting.
     sso_uid_url: str = "https://space.4fair.cn/oidc-server/sso/uid"
